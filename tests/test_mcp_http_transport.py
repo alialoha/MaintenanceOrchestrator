@@ -101,6 +101,8 @@ def test_mcp_streamable_http_session_tools_and_calls():
         "reserve_service_slot",
         "list_deliveries_at_risk",
         "estimate_delay_impact",
+        "generate_operator_summary",
+        "generate_customer_update",
     }
 
     async def _run() -> None:

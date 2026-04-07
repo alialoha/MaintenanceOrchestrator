@@ -2,30 +2,20 @@
   "LOC-MAIN": [
     {
       "part_number": "FLT-OIL-01",
-      "qty_on_hand": 12,
-      "description": "Engine oil filter"
+      "qty_on_hand": 18,
+      "description": "Oil Change kit"
     },
     {
-      "part_number": "SENS-BOOST-102",
-      "qty_on_hand": 3,
-      "description": "Boost pressure sensor (SPN 102 family)"
-    },
-    {
-      "part_number": "BRK-PAD-F150",
-      "qty_on_hand": 8,
-      "description": "Brake pad set"
+      "part_number": "PART-1468",
+      "qty_on_hand": 14,
+      "description": "Engine Overhaul kit"
     }
   ],
   "LOC-NORTH": [
     {
-      "part_number": "FLT-OIL-01",
-      "qty_on_hand": 4,
-      "description": "Engine oil filter"
-    },
-    {
       "part_number": "TIRE-AG-22",
-      "qty_on_hand": 20,
-      "description": "All-terrain tire 22in"
+      "qty_on_hand": 16,
+      "description": "Tire Rotation kit"
     }
   ]
 }

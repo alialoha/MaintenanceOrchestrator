@@ -927,6 +927,105 @@ def estimate_delay_impact(vehicle_id: str, scenario: str) -> dict[str, Any]:
     )
 
 
+@mcp.tool()
+def generate_operator_summary(work_order_id: str) -> dict[str, Any]:
+    """Generate an operator-facing summary for a work order. (Risk: LOW)"""
+    wo_id = (work_order_id or "").strip()
+    wo = _find_work_order(wo_id)
+    if not wo:
+        return {"ok": False, "error": f"Unknown work_order_id: {wo_id}"}
+    vehicle_id = (wo.get("vehicle_id") or "").strip()
+    duration = estimate_repair_duration(wo_id)
+    est_hours = None
+    if duration.get("ok"):
+        est_hours = (duration.get("result") or {}).get("estimated_labor_hours")
+    risk = estimate_delay_impact(vehicle_id, "repair_now")
+    risk_result = risk.get("result") if risk.get("ok") else {}
+    lines = [
+        f"Work order {wo_id} for vehicle {vehicle_id}.",
+        f"Priority: {(wo.get('priority') or '').lower()} | Status: {wo.get('status') or 'created'}.",
+        f"Issue: {wo.get('issue_summary') or 'n/a'}.",
+    ]
+    if est_hours is not None:
+        lines.append(f"Estimated labor: {est_hours}h.")
+    if risk_result:
+        lines.append(
+            "Projected impact (repair_now): "
+            f"delay={risk_result.get('estimated_delay_hours')}h, "
+            f"SLA breach={risk_result.get('sla_breach_probability')}, "
+            f"cost={risk_result.get('estimated_cost_impact')}."
+        )
+    needs_approval = (wo.get("priority") or "").strip().lower() in ("high", "critical")
+    return _response(
+        {
+            "work_order_id": wo_id,
+            "vehicle_id": vehicle_id,
+            "summary_text": " ".join(lines),
+            "key_points": lines,
+        },
+        confidence=0.86,
+        requires_approval=needs_approval,
+        approval_reason="High/critical work orders require operator approval." if needs_approval else None,
+        next_actions=["request_approval if required", "propose_service_appointment", "reserve_service_slot"],
+    )
+
+
+@mcp.tool()
+def generate_customer_update(delivery_id: str, tone: str = "professional") -> dict[str, Any]:
+    """Generate a customer-facing update from derived delivery risk + scenario impact. (Risk: LOW)"""
+    did = (delivery_id or "").strip()
+    tone_norm = (tone or "professional").strip().lower()
+    if tone_norm not in ("professional", "concise", "empathetic"):
+        return {"ok": False, "error": "tone must be one of: professional, concise, empathetic"}
+    vehicle_id = ""
+    delivery: dict[str, Any] | None = None
+    for vid in list(_load_vehicles().keys())[:500]:
+        resp = list_deliveries_at_risk(vid, horizon_hours=168)
+        if not resp.get("ok"):
+            continue
+        for d in (resp.get("result") or {}).get("deliveries", []):
+            if (d.get("delivery_id") or "").strip() == did:
+                vehicle_id = vid
+                delivery = d
+                break
+        if delivery:
+            break
+    if not delivery:
+        return {"ok": False, "error": f"Unknown delivery_id: {did}"}
+    impact = estimate_delay_impact(vehicle_id, "repair_now")
+    r = impact.get("result") if impact.get("ok") else {}
+    delay = r.get("estimated_delay_hours", 0)
+    sla = r.get("sla_breach_probability", 0)
+    if tone_norm == "concise":
+        msg = (
+            f"Update for {did}: maintenance activity may affect ETA by about {delay} hours. "
+            "We are actively managing the route and will share the next milestone shortly."
+        )
+    elif tone_norm == "empathetic":
+        msg = (
+            f"We understand schedule reliability matters. For delivery {did}, we are addressing a maintenance risk "
+            f"that may shift ETA by about {delay} hours. Our team is prioritizing mitigation and will keep you updated."
+        )
+    else:
+        msg = (
+            f"Delivery {did} is under active operational review due to a maintenance-related risk event. "
+            f"Current modeled ETA impact is approximately {delay} hours; we continue mitigation to reduce delay exposure "
+            f"(modeled SLA risk: {sla})."
+        )
+    return _response(
+        {
+            "delivery_id": did,
+            "vehicle_id": vehicle_id,
+            "tone": tone_norm,
+            "customer_message": msg,
+        },
+        confidence=0.8,
+        assumptions=[
+            "Customer update is generated from modeled risk/impact estimates rather than live dispatch telemetry."
+        ],
+    )
+
+
 @mcp.resource("file://workspace/{filename}")
 def resource_workspace_file(filename: str) -> str:
     path = WORKSPACE / filename
@@ -1016,18 +1115,42 @@ def prompt_incident_triage(vehicle_id: str, spn: int, fmi: int) -> str:
     return (
         "Triage this maintenance incident.\n"
         f"- vehicle_id: {vehicle_id}\n"
-        f"- spn/fmi: {spn}/{fmi}\n"
-        "Steps: fetch_vehicle_faults -> lookup_fault_resolution -> score_fault_severity -> "
-        "predict_maintenance_need -> decide if create_work_order is required. "
-        "Highlight if approval is needed."
+        f"- spn/fmi: {spn}/{fmi}\n\n"
+        "Required tool sequence:\n"
+        "1) fetch_vehicle_faults(vehicle_id)\n"
+        "2) lookup_fault_resolution(spn, fmi)\n"
+        "3) score_fault_severity(vehicle_id, spn, fmi)\n"
+        "4) predict_maintenance_need(vehicle_id)\n"
+        "5) If severity high or probability high: create_work_order(...)\n"
+        "6) If work order priority is high/critical: request_approval(...)\n\n"
+        "Approval checkpoint:\n"
+        "- Explicitly state whether approval is required and why.\n\n"
+        "Output format:\n"
+        "- Incident summary\n"
+        "- Fault interpretation\n"
+        "- Severity + predictive signals\n"
+        "- Recommendation + required approvals\n"
+        "- Next actions (ordered)"
     )
 
 
 @mcp.prompt()
 def prompt_work_order_review(work_order_id: str) -> str:
     return (
-        f"Review work order {work_order_id}.\n"
-        "Summarize priority, expected impact, approval requirement, and next actions for operator."
+        f"Review work order {work_order_id}.\n\n"
+        "Required tool sequence:\n"
+        "1) estimate_repair_duration(work_order_id)\n"
+        "2) generate_operator_summary(work_order_id)\n"
+        "3) If slot not reserved: propose_service_appointment(...)\n"
+        "4) If reservation candidate selected: reserve_service_slot(work_order_id, slot_id)\n"
+        "5) estimate_delay_impact(vehicle_id, scenario='repair_now')\n\n"
+        "Approval checkpoint:\n"
+        "- Confirm if current action path requires request_approval.\n\n"
+        "Output format:\n"
+        "- Work order state\n"
+        "- Capacity/scheduling recommendation\n"
+        "- Delay/cost impact snapshot\n"
+        "- Approval status and decision options"
     )
 
 
@@ -1035,8 +1158,17 @@ def prompt_work_order_review(work_order_id: str) -> str:
 def prompt_customer_update(delivery_id: str, issue_summary: str = "") -> str:
     return (
         f"Draft a customer-safe status update for delivery {delivery_id}.\n"
-        f"Issue summary: {issue_summary or 'maintenance delay risk under review'}.\n"
-        "Tone: professional, concise, no internal-only technical details."
+        f"Issue summary: {issue_summary or 'maintenance delay risk under review'}.\n\n"
+        "Required tool sequence:\n"
+        "1) generate_customer_update(delivery_id, tone='professional')\n"
+        "2) Optionally run estimate_delay_impact(vehicle_id, scenario='repair_now') if more detail needed\n\n"
+        "Approval checkpoint:\n"
+        "- Do not include internal-only diagnostics, policy, or approval workflow details.\n\n"
+        "Output format:\n"
+        "- 1-2 sentence external summary\n"
+        "- Expected next update window\n"
+        "- Helpful contact/action line\n"
+        "Tone: professional, concise."
     )
 
 

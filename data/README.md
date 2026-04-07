@@ -23,6 +23,8 @@ This folder contains public and synthetic-ready data inputs for the Maintenance 
 ### Synthetic demo overlays (Phase 2)
 
 - `synthetic/parts_inventory.json`, `synthetic/shop_and_slots.json` — small bundles used by shop/scheduling MCP tools (not raw downloads). Logistics-style “deliveries at risk” come from `normalized/risk_observations.csv` via tools, not a separate JSON bundle.
+- Regenerate overlays from normalized data with:
+  - `python scripts/materialize_phase3_data.py`
 
 ### Reference mappings
 

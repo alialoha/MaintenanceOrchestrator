@@ -36,6 +36,8 @@ def risk_levels_map() -> dict[str, str]:
         "reserve_service_slot": "high",
         "list_deliveries_at_risk": "low",
         "estimate_delay_impact": "medium",
+        "generate_operator_summary": "low",
+        "generate_customer_update": "low",
     }
     return levels
 

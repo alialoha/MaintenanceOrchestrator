@@ -80,6 +80,8 @@ def sample_json_for_tool(tool_name: str) -> str:
         },
         "list_deliveries_at_risk": {"vehicle_id": "64940", "horizon_hours": 72},
         "estimate_delay_impact": {"vehicle_id": "64940", "scenario": "repair_now"},
+        "generate_operator_summary": {"work_order_id": "WO-20260407010101-64940"},
+        "generate_customer_update": {"delivery_id": "RS-1", "tone": "professional"},
     }
     if tool_name not in samples:
         return "{}"
@@ -98,7 +100,7 @@ def sample_json_for_prompt(prompt_name: str) -> str:
         "prompt_incident_triage": {"vehicle_id": "64940", "spn": 102, "fmi": 3},
         "prompt_work_order_review": {"work_order_id": "WO-20260407010101-64940"},
         "prompt_customer_update": {
-            "delivery_id": "DEL-1001",
+            "delivery_id": "RS-1",
             "issue_summary": "Vehicle maintenance event under active mitigation.",
         },
     }

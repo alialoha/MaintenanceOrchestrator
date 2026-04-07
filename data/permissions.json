@@ -19,5 +19,7 @@
   "propose_service_appointment": "ask",
   "reserve_service_slot": "ask",
   "list_deliveries_at_risk": "allow",
-  "estimate_delay_impact": "ask"
+  "estimate_delay_impact": "ask",
+  "generate_operator_summary": "allow",
+  "generate_customer_update": "allow"
 }

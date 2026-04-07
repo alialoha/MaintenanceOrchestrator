@@ -7,34 +7,82 @@
     },
     "LOC-NORTH": {
       "name": "Northern Depot",
-      "daily_capacity_jobs": 5,
+      "daily_capacity_jobs": 6,
       "address_hint": "I-95 corridor"
     }
   },
   "slots": [
     {
-      "slot_id": "SL-MAIN-1",
+      "slot_id": "SL-MAIN-1-1",
       "location_id": "LOC-MAIN",
-      "start_iso": "2026-04-08T14:00:00Z",
-      "duration_hours": 4.0
+      "start_iso": "2026-04-07T09:00:00+00:00Z",
+      "duration_hours": 3.5
     },
     {
-      "slot_id": "SL-MAIN-2",
+      "slot_id": "SL-MAIN-1-2",
       "location_id": "LOC-MAIN",
-      "start_iso": "2026-04-09T15:00:00Z",
-      "duration_hours": 6.0
+      "start_iso": "2026-04-07T14:00:00+00:00Z",
+      "duration_hours": 5.0
     },
     {
-      "slot_id": "SL-NORTH-1",
+      "slot_id": "SL-NORTH-1-1",
       "location_id": "LOC-NORTH",
-      "start_iso": "2026-04-08T18:00:00Z",
+      "start_iso": "2026-04-07T09:00:00+00:00Z",
       "duration_hours": 3.0
     },
     {
-      "slot_id": "SL-NORTH-2",
+      "slot_id": "SL-NORTH-1-2",
       "location_id": "LOC-NORTH",
-      "start_iso": "2026-04-10T13:00:00Z",
-      "duration_hours": 8.0
+      "start_iso": "2026-04-07T15:00:00+00:00Z",
+      "duration_hours": 4.5
+    },
+    {
+      "slot_id": "SL-MAIN-2-1",
+      "location_id": "LOC-MAIN",
+      "start_iso": "2026-04-08T09:00:00+00:00Z",
+      "duration_hours": 3.5
+    },
+    {
+      "slot_id": "SL-MAIN-2-2",
+      "location_id": "LOC-MAIN",
+      "start_iso": "2026-04-08T14:00:00+00:00Z",
+      "duration_hours": 5.0
+    },
+    {
+      "slot_id": "SL-NORTH-2-1",
+      "location_id": "LOC-NORTH",
+      "start_iso": "2026-04-08T09:00:00+00:00Z",
+      "duration_hours": 3.0
+    },
+    {
+      "slot_id": "SL-NORTH-2-2",
+      "location_id": "LOC-NORTH",
+      "start_iso": "2026-04-08T15:00:00+00:00Z",
+      "duration_hours": 4.5
+    },
+    {
+      "slot_id": "SL-MAIN-3-1",
+      "location_id": "LOC-MAIN",
+      "start_iso": "2026-04-09T09:00:00+00:00Z",
+      "duration_hours": 3.5
+    },
+    {
+      "slot_id": "SL-MAIN-3-2",
+      "location_id": "LOC-MAIN",
+      "start_iso": "2026-04-09T14:00:00+00:00Z",
+      "duration_hours": 5.0
+    },
+    {
+      "slot_id": "SL-NORTH-3-1",
+      "location_id": "LOC-NORTH",
+      "start_iso": "2026-04-09T09:00:00+00:00Z",
+      "duration_hours": 3.0
+    },
+    {
+      "slot_id": "SL-NORTH-3-2",
+      "location_id": "LOC-NORTH",
+      "start_iso": "2026-04-09T15:00:00+00:00Z",
+      "duration_hours": 4.5
     }
   ]
 }

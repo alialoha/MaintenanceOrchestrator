@@ -22,6 +22,8 @@ def test_sample_json_for_tool_known_tools():
         "analyze_code",
         "check_parts_inventory",
         "list_deliveries_at_risk",
+        "generate_operator_summary",
+        "generate_customer_update",
     ):
         raw = sample_json_for_tool(name)
         data = json.loads(raw)
@@ -34,7 +36,14 @@ def test_sample_json_unknown_tool():
 
 
 def test_sample_json_for_prompt_known():
-    for name in ("review_code", "analyze_security", "security_review"):
+    for name in (
+        "review_code",
+        "analyze_security",
+        "security_review",
+        "prompt_incident_triage",
+        "prompt_work_order_review",
+        "prompt_customer_update",
+    ):
         raw = sample_json_for_prompt(name)
         data = json.loads(raw)
         assert isinstance(data, dict)
