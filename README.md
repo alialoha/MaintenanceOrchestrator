@@ -76,6 +76,16 @@ The Flask UI now includes dashboard sections intended for enterprise demos:
 - **Audit**: recent audit lines
 - **Chat**: guided prompt chips + conversational copilot
 
+### Branding configuration
+
+You can swap branding without code changes:
+
+- `COMPANY_NAME` (default: `Penske Demo`)
+- `LOGO_PATH` (default: `/static/penske-demo-logo.svg`)
+
+For a real Penske logo, place the approved asset under `src/web/static/` and set:
+`LOGO_PATH=/static/<your-logo-file>`
+
 ## Layout
 
 All Python packages live under **`src/`** only. (Do not add `mcp_client`, `mcp_server`, or `operator` at the repo root — those were stray empty folders and have been removed.)
