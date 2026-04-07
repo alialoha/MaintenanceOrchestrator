@@ -106,6 +106,3 @@ def test_phase2_resources():
     assert "LOC-MAIN" in parts
     shop = json.loads(srv.resource_shop_capacity_snapshot())
     assert "slots" in shop
-    d = json.loads(srv.resource_deliveries_demo())
-    assert isinstance(d, dict)
-    assert "deliveries" in d

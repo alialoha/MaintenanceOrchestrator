@@ -396,7 +396,7 @@ Input:
 - `risk_observations_recent` -> from `data/normalized/risk_observations.csv`
 - `shop_capacity_snapshot` -> `data/synthetic/shop_and_slots.json` (resource URI `file://data/synthetic/shop_capacity`)
 - `parts_inventory_snapshot` -> `data/synthetic/parts_inventory.json` (resource URI `file://data/synthetic/parts_inventory`)
-- `deliveries_demo` -> `data/synthetic/deliveries.json` (resource URI `file://data/synthetic/deliveries`)
+- Delivery-style risk listings -> tool `list_deliveries_at_risk` (derived from `data/normalized/risk_observations.csv`; no synthetic deliveries JSON)
 
 ## Prompts (initial)
 
@@ -425,7 +425,7 @@ Each prompt should include:
 - Planning: `estimate_repair_duration` (see §2 Maintenance Planning)
 - Logistics impact: `list_deliveries_at_risk`, `estimate_delay_impact`
 - Synthetic seed data: `data/synthetic/*.json`; slot ledger: `data/operations/slot_reservations.jsonl`
-- Resources: `file://data/synthetic/parts_inventory`, `file://data/synthetic/shop_capacity`, `file://data/synthetic/deliveries`
+- Resources: `file://data/synthetic/parts_inventory`, `file://data/synthetic/shop_capacity`
 
 ### Phase 3
 

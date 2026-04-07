@@ -988,22 +988,6 @@ def resource_shop_capacity_snapshot() -> str:
     return json.dumps(_load_shop_slots_document(), indent=2)
 
 
-@mcp.resource("file://data/synthetic/deliveries")
-def resource_deliveries_demo() -> str:
-    # Kept for backward compatibility with the original spec URI. Now derived from normalized
-    # risk observations so the content uses real normalized columns.
-    example_vehicle_id = "64940"
-    derived = list_deliveries_at_risk(example_vehicle_id, horizon_hours=168)["result"]
-    return json.dumps(
-        {
-            "example_vehicle_id": example_vehicle_id,
-            "deliveries": derived.get("deliveries", []),
-            "note": "Derived from data/normalized/risk_observations.csv (no live TMS feed).",
-        },
-        indent=2,
-    )
-
-
 @mcp.prompt()
 def review_code(filename: str) -> str:
     return f"""Review the code in workspace file '{filename}' for clarity, bugs, and security."""
