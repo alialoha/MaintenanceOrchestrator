@@ -95,6 +95,12 @@ def test_mcp_streamable_http_session_tools_and_calls():
         "request_approval",
         "record_decision_log",
         "get_audit_trail",
+        "estimate_repair_duration",
+        "check_parts_inventory",
+        "propose_service_appointment",
+        "reserve_service_slot",
+        "list_deliveries_at_risk",
+        "estimate_delay_impact",
     }
 
     async def _run() -> None:
@@ -110,7 +116,7 @@ def test_mcp_streamable_http_session_tools_and_calls():
                 tools = await client.list_tools()
                 names = {t.name for t in tools}
                 missing = phase1_tools - names
-                assert not missing, f"Missing Phase 1 tools over HTTP: {missing}"
+                assert not missing, f"Missing maintenance tools over HTTP: {missing}"
 
                 res = await client.call_tool(
                     "lookup_fault_resolution", {"spn": 102, "fmi": 3}

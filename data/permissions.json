@@ -4,5 +4,20 @@
   "list_files": "allow",
   "delete_file": "deny",
   "execute_command": "deny",
-  "analyze_code": "ask"
+  "analyze_code": "ask",
+  "fetch_vehicle_faults": "allow",
+  "lookup_fault_resolution": "allow",
+  "score_fault_severity": "ask",
+  "get_maintenance_history": "allow",
+  "predict_maintenance_need": "ask",
+  "create_work_order": "ask",
+  "request_approval": "ask",
+  "record_decision_log": "ask",
+  "get_audit_trail": "allow",
+  "estimate_repair_duration": "ask",
+  "check_parts_inventory": "allow",
+  "propose_service_appointment": "ask",
+  "reserve_service_slot": "ask",
+  "list_deliveries_at_risk": "allow",
+  "estimate_delay_impact": "ask"
 }

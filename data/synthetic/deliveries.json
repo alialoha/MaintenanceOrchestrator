@@ -1,0 +1,23 @@
+[
+  {
+    "delivery_id": "DEL-1001",
+    "vehicle_id": "64940",
+    "due_iso": "2026-04-10T18:00:00Z",
+    "status": "in_transit",
+    "route_hint": "ATL-MEM"
+  },
+  {
+    "delivery_id": "DEL-1002",
+    "vehicle_id": "64940",
+    "due_iso": "2026-04-07T16:00:00Z",
+    "status": "scheduled",
+    "route_hint": "local"
+  },
+  {
+    "delivery_id": "DEL-2001",
+    "vehicle_id": "38684",
+    "due_iso": "2026-04-12T08:00:00Z",
+    "status": "in_transit",
+    "route_hint": "DEN-CHI"
+  }
+]

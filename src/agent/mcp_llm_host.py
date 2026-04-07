@@ -30,6 +30,12 @@ def risk_levels_map() -> dict[str, str]:
         "request_approval": "high",
         "record_decision_log": "medium",
         "get_audit_trail": "low",
+        "estimate_repair_duration": "medium",
+        "check_parts_inventory": "low",
+        "propose_service_appointment": "medium",
+        "reserve_service_slot": "high",
+        "list_deliveries_at_risk": "low",
+        "estimate_delay_impact": "medium",
     }
     return levels
 

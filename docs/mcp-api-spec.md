@@ -389,8 +389,9 @@ Input:
 - `vehicle_profile` -> from `data/normalized/vehicles.csv`
 - `maintenance_events_recent` -> from `data/normalized/maintenance_events.csv`
 - `risk_observations_recent` -> from `data/normalized/risk_observations.csv`
-- `shop_capacity_snapshot` -> synthetic table (to be added)
-- `parts_inventory_snapshot` -> synthetic table (to be added)
+- `shop_capacity_snapshot` -> `data/synthetic/shop_and_slots.json` (resource URI `file://data/synthetic/shop_capacity`)
+- `parts_inventory_snapshot` -> `data/synthetic/parts_inventory.json` (resource URI `file://data/synthetic/parts_inventory`)
+- `deliveries_demo` -> `data/synthetic/deliveries.json` (resource URI `file://data/synthetic/deliveries`)
 
 ## Prompts (initial)
 
@@ -413,10 +414,13 @@ Each prompt should include:
 - Planning: `get_maintenance_history`, `predict_maintenance_need`, `create_work_order`
 - Governance: `request_approval`, `record_decision_log`, `get_audit_trail`
 
-### Phase 2
+### Phase 2 (implemented)
 
-- Shop/parts/scheduling tools
-- Logistics impact tools
+- Shop/parts/scheduling: `check_parts_inventory`, `propose_service_appointment`, `reserve_service_slot`
+- Planning: `estimate_repair_duration` (see §2 Maintenance Planning)
+- Logistics impact: `list_deliveries_at_risk`, `estimate_delay_impact`
+- Synthetic seed data: `data/synthetic/*.json`; slot ledger: `data/operations/slot_reservations.jsonl`
+- Resources: `file://data/synthetic/parts_inventory`, `file://data/synthetic/shop_capacity`, `file://data/synthetic/deliveries`
 
 ### Phase 3
 

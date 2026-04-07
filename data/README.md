@@ -20,6 +20,10 @@ This folder contains public and synthetic-ready data inputs for the Maintenance 
   - Download via: `python scripts/download_kaggle_seed.py --dataset vehicle_maintenance_history`
   - Use in demo: recurring faults, maintenance history, and work-order signals.
 
+### Synthetic demo overlays (Phase 2)
+
+- `synthetic/parts_inventory.json`, `synthetic/shop_and_slots.json`, `synthetic/deliveries.json` — small bundles used by shop/logistics MCP tools (not raw downloads).
+
 ### Reference mappings
 
 - `reference/j1939_top_faults.json`

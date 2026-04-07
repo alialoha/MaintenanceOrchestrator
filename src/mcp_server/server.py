@@ -33,6 +33,8 @@ OPERATIONS_DIR.mkdir(parents=True, exist_ok=True)
 WORK_ORDERS_FILE = OPERATIONS_DIR / "work_orders.jsonl"
 APPROVALS_FILE = OPERATIONS_DIR / "approvals.jsonl"
 DECISIONS_FILE = OPERATIONS_DIR / "decisions.jsonl"
+SLOT_RESERVATIONS_FILE = OPERATIONS_DIR / "slot_reservations.jsonl"
+SYNTHETIC_DIR = _DATA / "synthetic"
 
 mcp = FastMCP("Secure MCP — workspace + governance")
 
@@ -84,6 +86,20 @@ def _parse_date(value: str | None) -> datetime | None:
 
 def _now_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+
+def _parse_iso_utc_naive(value: str | None) -> datetime | None:
+    s = (value or "").strip()
+    if not s:
+        return None
+    if s.endswith("Z"):
+        s = s[:-1]
+    if "+" in s:
+        s = s.split("+", 1)[0]
+    try:
+        return datetime.fromisoformat(s)
+    except ValueError:
+        return _parse_date(value)
 
 
 def _append_jsonl(path: Path, record: dict[str, Any]) -> None:
@@ -163,6 +179,68 @@ def _load_risk_rows() -> list[dict[str, Any]]:
         for row in csv.DictReader(f):
             out.append(row)
     return out
+
+
+@lru_cache(maxsize=1)
+def _load_parts_inventory_by_location() -> dict[str, list[dict[str, Any]]]:
+    path = SYNTHETIC_DIR / "parts_inventory.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _load_shop_slots_document() -> dict[str, Any]:
+    path = SYNTHETIC_DIR / "shop_and_slots.json"
+    if not path.exists():
+        return {"locations": {}, "slots": []}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _load_deliveries() -> list[dict[str, Any]]:
+    path = SYNTHETIC_DIR / "deliveries.json"
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return data if isinstance(data, list) else []
+
+
+def _reserved_slot_ids() -> set[str]:
+    out: set[str] = set()
+    for rec in _read_jsonl(SLOT_RESERVATIONS_FILE):
+        sid = (rec.get("slot_id") or "").strip()
+        if sid:
+            out.add(sid)
+    return out
+
+
+def _open_slots_for_location(location_id: str) -> list[dict[str, Any]]:
+    taken = _reserved_slot_ids()
+    rows: list[dict[str, Any]] = []
+    for s in _load_shop_slots_document().get("slots", []):
+        if (s.get("location_id") or "").strip() != location_id:
+            continue
+        sid = (s.get("slot_id") or "").strip()
+        if sid in taken:
+            continue
+        rows.append(s)
+    rows.sort(key=lambda r: _parse_iso_utc_naive(r.get("start_iso")) or datetime.min)
+    return rows
+
+
+def _find_work_order(work_order_id: str) -> dict[str, Any] | None:
+    for rec in reversed(_read_jsonl(WORK_ORDERS_FILE)):
+        if rec.get("work_order_id") == work_order_id:
+            return rec
+    return None
+
+
+def _slot_by_id(slot_id: str) -> dict[str, Any] | None:
+    for s in _load_shop_slots_document().get("slots", []):
+        if (s.get("slot_id") or "").strip() == slot_id:
+            return s
+    return None
 
 
 def _to_float(value: Any, default: float = 0.0) -> float:
@@ -550,6 +628,225 @@ def get_audit_trail(entity_type: str, entity_id: str, limit: int = 100) -> dict[
     )
 
 
+@mcp.tool()
+def estimate_repair_duration(work_order_id: str) -> dict[str, Any]:
+    """Estimate shop time to complete a work order from priority and summary. (Risk: MEDIUM)"""
+    wo = _find_work_order(work_order_id.strip())
+    if not wo:
+        return {"ok": False, "error": f"Unknown work_order_id: {work_order_id}"}
+    p = (wo.get("priority") or "medium").strip().lower()
+    base = {"low": 2.5, "medium": 4.0, "high": 8.0, "critical": 14.0}.get(p, 4.0)
+    summary = (wo.get("issue_summary") or "").lower()
+    extra = 1.0 if any(k in summary for k in ("turbo", "boost", "sensor", "electrical")) else 0.0
+    extra += 0.5 if any(k in summary for k in ("brake", "tire", "oil")) else 0.0
+    hours = round(min(24.0, base + extra), 2)
+    return _response(
+        {
+            "work_order_id": work_order_id.strip(),
+            "estimated_labor_hours": hours,
+            "priority": p,
+            "basis": "priority tier + keyword heuristics on issue_summary",
+        },
+        confidence=0.72,
+        assumptions=["No live shop telemetry; demo estimator only."],
+        next_actions=["check_parts_inventory", "propose_service_appointment"],
+    )
+
+
+@mcp.tool()
+def check_parts_inventory(location_id: str, part_numbers: list[str]) -> dict[str, Any]:
+    """Check on-hand quantity for part numbers at a depot. (Risk: LOW)"""
+    loc = (location_id or "").strip()
+    inv = _load_parts_inventory_by_location()
+    if loc not in inv:
+        return _response(
+            {"location_id": loc, "parts": [], "missing_location": True},
+            confidence=0.4,
+            assumptions=[f"No inventory snapshot for location_id={loc!r}."],
+        )
+    want = [str(p).strip() for p in (part_numbers or []) if str(p).strip()][:50]
+    if not want:
+        return {"ok": False, "error": "part_numbers must contain at least one part number"}
+    by_pn = {str(r.get("part_number")): r for r in inv[loc]}
+    rows: list[dict[str, Any]] = []
+    for pn in want:
+        r = by_pn.get(pn)
+        if r:
+            rows.append(
+                {
+                    "part_number": pn,
+                    "qty_on_hand": int(r.get("qty_on_hand", 0)),
+                    "description": r.get("description", ""),
+                }
+            )
+        else:
+            rows.append({"part_number": pn, "qty_on_hand": 0, "description": "", "not_stocked": True})
+    return _response(
+        {"location_id": loc, "parts": rows, "count": len(rows)},
+        confidence=1.0,
+        next_actions=["propose_service_appointment", "reserve_service_slot"],
+    )
+
+
+@mcp.tool()
+def propose_service_appointment(
+    location_id: str, duration_hours: float, priority: str
+) -> dict[str, Any]:
+    """Suggest open service slots at a location (read-only planning). (Risk: MEDIUM)"""
+    loc = (location_id or "").strip()
+    pr = (priority or "").strip().lower()
+    if pr not in ("low", "medium", "high", "critical"):
+        return {"ok": False, "error": "priority must be one of: low, medium, high, critical"}
+    try:
+        dur = float(duration_hours)
+    except (TypeError, ValueError):
+        return {"ok": False, "error": "duration_hours must be a number"}
+    if dur < 0.5 or dur > 24.0:
+        return {"ok": False, "error": "duration_hours must be between 0.5 and 24"}
+    doc = _load_shop_slots_document()
+    if loc not in (doc.get("locations") or {}):
+        return _response(
+            {"location_id": loc, "candidates": []},
+            confidence=0.35,
+            assumptions=["Unknown location_id for demo shop network."],
+        )
+    candidates: list[dict[str, Any]] = []
+    for slot in _open_slots_for_location(loc):
+        try:
+            slot_dur = float(slot.get("duration_hours", 0))
+        except (TypeError, ValueError):
+            continue
+        if slot_dur + 1e-6 < dur:
+            continue
+        candidates.append(
+            {
+                "slot_id": slot.get("slot_id"),
+                "location_id": loc,
+                "start_iso": slot.get("start_iso"),
+                "duration_hours": slot_dur,
+                "fits_requested_duration": dur,
+            }
+        )
+    return _response(
+        {
+            "location_id": loc,
+            "priority": pr,
+            "requested_duration_hours": dur,
+            "candidates": candidates[:8],
+            "count": len(candidates[:8]),
+        },
+        confidence=0.88 if candidates else 0.45,
+        assumptions=["Slots exclude those already reserved in operations ledger."],
+        next_actions=["reserve_service_slot after work order exists"],
+    )
+
+
+@mcp.tool()
+def reserve_service_slot(work_order_id: str, slot_id: str) -> dict[str, Any]:
+    """Reserve a service slot for an existing work order. (Risk: HIGH)"""
+    wo_id = (work_order_id or "").strip()
+    sid = (slot_id or "").strip()
+    if not _find_work_order(wo_id):
+        return {"ok": False, "error": f"Unknown work_order_id: {wo_id}"}
+    slot = _slot_by_id(sid)
+    if not slot:
+        return {"ok": False, "error": f"Unknown slot_id: {sid}"}
+    if sid in _reserved_slot_ids():
+        return {"ok": False, "error": f"slot_id already reserved: {sid}"}
+    rec = {
+        "reservation_id": f"RSV-{datetime.utcnow().strftime('%Y%m%d%H%M%S%f')}",
+        "work_order_id": wo_id,
+        "slot_id": sid,
+        "location_id": (slot.get("location_id") or "").strip(),
+        "reserved_at": _now_iso(),
+    }
+    _append_jsonl(SLOT_RESERVATIONS_FILE, rec)
+    _audit(f"[{datetime.now().isoformat()}] SLOT_RESERVE: {rec['reservation_id']} wo={wo_id} slot={sid}\n")
+    return _response(
+        rec,
+        confidence=1.0,
+        requires_approval=True,
+        approval_reason="Slot reservation affects shop capacity and downstream logistics.",
+        next_actions=["list_deliveries_at_risk", "estimate_delay_impact"],
+    )
+
+
+@mcp.tool()
+def list_deliveries_at_risk(vehicle_id: str, horizon_hours: int = 48) -> dict[str, Any]:
+    """List synthetic deliveries for a vehicle with due times inside the horizon. (Risk: LOW)"""
+    h = max(1, min(168, int(horizon_hours)))
+    now = datetime.utcnow()
+    end = now + timedelta(hours=h)
+    vid = (vehicle_id or "").strip()
+    active_status = {"scheduled", "in_transit", "at_risk", "loading", "pending"}
+    out: list[dict[str, Any]] = []
+    for d in _load_deliveries():
+        if (d.get("vehicle_id") or "").strip() != vid:
+            continue
+        st = (d.get("status") or "").strip().lower()
+        if st in ("delivered", "completed", "cancelled"):
+            continue
+        due = _parse_iso_utc_naive(d.get("due_iso"))
+        if not due:
+            continue
+        if due <= end:
+            row = {**d}
+            row["at_risk_reason"] = "overdue" if due < now else "due_within_horizon"
+            out.append(row)
+    out.sort(key=lambda r: _parse_iso_utc_naive(r.get("due_iso")) or datetime.max)
+    return _response(
+        {"vehicle_id": vid, "horizon_hours": h, "deliveries": out, "count": len(out)},
+        confidence=0.75,
+        assumptions=["Deliveries are demo JSON; not live TMS."],
+        next_actions=["estimate_delay_impact"],
+    )
+
+
+@mcp.tool()
+def estimate_delay_impact(vehicle_id: str, scenario: str) -> dict[str, Any]:
+    """Estimate delay hours, SLA breach risk, and cost impact for maintenance scenarios. (Risk: MEDIUM)"""
+    vid = (vehicle_id or "").strip()
+    scen = (scenario or "").strip().lower()
+    allowed = ("repair_now", "defer_24h", "swap_vehicle")
+    if scen not in allowed:
+        return {"ok": False, "error": f"scenario must be one of: {', '.join(allowed)}"}
+    pred = predict_maintenance_need(vid)
+    p_need = 0.25
+    if pred.get("ok") and isinstance(pred.get("result"), dict):
+        try:
+            p_need = float(pred["result"].get("maintenance_need_probability", 0.25))
+        except (TypeError, ValueError):
+            p_need = 0.25
+    dresp = list_deliveries_at_risk(vid, horizon_hours=72)
+    n_at_risk = 0
+    if dresp.get("ok") and isinstance(dresp.get("result"), dict):
+        n_at_risk = int(dresp["result"].get("count", 0) or 0)
+    if scen == "repair_now":
+        base_delay = 6.0 + p_need * 18.0
+        sla = min(0.92, 0.25 + p_need * 0.45 + n_at_risk * 0.08)
+        cost = 400.0 + p_need * 2200.0 + n_at_risk * 350.0
+    elif scen == "defer_24h":
+        base_delay = 24.0 + p_need * 14.0
+        sla = min(0.95, 0.35 + p_need * 0.5 + n_at_risk * 0.12)
+        cost = 250.0 + p_need * 3200.0 + n_at_risk * 520.0
+    else:
+        base_delay = max(0.0, 3.0 + p_need * 8.0)
+        sla = min(0.88, 0.2 + p_need * 0.35 + n_at_risk * 0.06)
+        cost = 900.0 + p_need * 1400.0 + n_at_risk * 200.0
+    return _response(
+        {
+            "vehicle_id": vid,
+            "scenario": scen,
+            "estimated_delay_hours": round(base_delay, 2),
+            "sla_breach_probability": round(sla, 4),
+            "estimated_cost_impact": round(cost, 2),
+            "inputs": {"maintenance_need_probability": round(p_need, 4), "deliveries_at_risk_72h": n_at_risk},
+        },
+        confidence=0.68,
+        assumptions=["Scenario model is deterministic demo math tied to predict_maintenance_need + delivery counts."],
+    )
+
+
 @mcp.resource("file://workspace/{filename}")
 def resource_workspace_file(filename: str) -> str:
     path = WORKSPACE / filename
@@ -599,6 +896,21 @@ def resource_vehicle_profile(vehicle_id: str) -> str:
 def resource_vehicle_maintenance_recent(vehicle_id: str) -> str:
     rows = _load_maintenance_events().get(vehicle_id, [])[:20]
     return json.dumps({"vehicle_id": vehicle_id, "events": rows}, indent=2)
+
+
+@mcp.resource("file://data/synthetic/parts_inventory")
+def resource_parts_inventory_snapshot() -> str:
+    return json.dumps(_load_parts_inventory_by_location(), indent=2)
+
+
+@mcp.resource("file://data/synthetic/shop_capacity")
+def resource_shop_capacity_snapshot() -> str:
+    return json.dumps(_load_shop_slots_document(), indent=2)
+
+
+@mcp.resource("file://data/synthetic/deliveries")
+def resource_deliveries_demo() -> str:
+    return json.dumps(_load_deliveries(), indent=2)
 
 
 @mcp.prompt()

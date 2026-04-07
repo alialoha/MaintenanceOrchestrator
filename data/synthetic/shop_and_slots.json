@@ -1,0 +1,40 @@
+{
+  "locations": {
+    "LOC-MAIN": {
+      "name": "Main Service Center",
+      "daily_capacity_jobs": 8,
+      "address_hint": "Metro hub"
+    },
+    "LOC-NORTH": {
+      "name": "Northern Depot",
+      "daily_capacity_jobs": 5,
+      "address_hint": "I-95 corridor"
+    }
+  },
+  "slots": [
+    {
+      "slot_id": "SL-MAIN-1",
+      "location_id": "LOC-MAIN",
+      "start_iso": "2026-04-08T14:00:00Z",
+      "duration_hours": 4.0
+    },
+    {
+      "slot_id": "SL-MAIN-2",
+      "location_id": "LOC-MAIN",
+      "start_iso": "2026-04-09T15:00:00Z",
+      "duration_hours": 6.0
+    },
+    {
+      "slot_id": "SL-NORTH-1",
+      "location_id": "LOC-NORTH",
+      "start_iso": "2026-04-08T18:00:00Z",
+      "duration_hours": 3.0
+    },
+    {
+      "slot_id": "SL-NORTH-2",
+      "location_id": "LOC-NORTH",
+      "start_iso": "2026-04-10T13:00:00Z",
+      "duration_hours": 8.0
+    }
+  ]
+}

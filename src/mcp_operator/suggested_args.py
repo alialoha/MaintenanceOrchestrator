@@ -64,6 +64,22 @@ def sample_json_for_tool(tool_name: str) -> str:
             "entity_id": "64940",
         },
         "get_audit_trail": {"entity_type": "vehicle", "entity_id": "64940", "limit": 50},
+        "estimate_repair_duration": {"work_order_id": "WO-20260407010101-64940"},
+        "check_parts_inventory": {
+            "location_id": "LOC-MAIN",
+            "part_numbers": ["FLT-OIL-01", "SENS-BOOST-102"],
+        },
+        "propose_service_appointment": {
+            "location_id": "LOC-MAIN",
+            "duration_hours": 4.0,
+            "priority": "high",
+        },
+        "reserve_service_slot": {
+            "work_order_id": "WO-20260407010101-64940",
+            "slot_id": "SL-MAIN-1",
+        },
+        "list_deliveries_at_risk": {"vehicle_id": "64940", "horizon_hours": 72},
+        "estimate_delay_impact": {"vehicle_id": "64940", "scenario": "repair_now"},
     }
     if tool_name not in samples:
         return "{}"

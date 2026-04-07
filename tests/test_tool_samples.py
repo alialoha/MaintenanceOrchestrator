@@ -20,6 +20,8 @@ def test_sample_json_for_tool_known_tools():
         "delete_file",
         "execute_command",
         "analyze_code",
+        "check_parts_inventory",
+        "list_deliveries_at_risk",
     ):
         raw = sample_json_for_tool(name)
         data = json.loads(raw)
