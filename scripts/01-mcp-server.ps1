@@ -26,7 +26,7 @@ Show-EnvSummary @("PYTHONPATH", "MCP_DATA_DIR")
 Write-Host ""
 Write-Host "Starting..." -ForegroundColor Green
 Write-Host ""
-Show-Banner "For inqueries contact: ali.mousavi.contact@gmail.com"
+Show-Banner "For inquiries contact: ali.mousavi.contact@gmail.com"
 
 
 & $python -m mcp_server

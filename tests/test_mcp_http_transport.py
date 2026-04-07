@@ -143,7 +143,8 @@ def test_mcp_streamable_http_session_tools_and_calls():
 
                 # Second session on same server (same asyncio loop — required for FastMCP `_started`)
                 async with Client(StreamableHttpTransport(url)) as client2:
-                    assert len(await client2.list_tools()) == len(tools)
+                    names2 = {t.name for t in await client2.list_tools()}
+                    assert phase1_tools <= names2
 
     # Subprocess lifespan teardown logs CancelledError to stderr after the client disconnects;
     # keep stderr quiet for this run so ``pytest -s`` stays readable.

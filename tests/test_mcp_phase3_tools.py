@@ -5,27 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
-
 import mcp_server.server as srv
 from scripts.materialize_phase3_data import materialize
-
-
-@pytest.fixture(autouse=True)
-def clear_caches():
-    srv._load_j1939_catalog.cache_clear()
-    srv._load_vehicles.cache_clear()
-    srv._load_maintenance_events.cache_clear()
-    srv._load_risk_rows.cache_clear()
-    srv._load_parts_inventory_by_location.cache_clear()
-    srv._load_shop_slots_document.cache_clear()
-    yield
-    srv._load_j1939_catalog.cache_clear()
-    srv._load_vehicles.cache_clear()
-    srv._load_maintenance_events.cache_clear()
-    srv._load_risk_rows.cache_clear()
-    srv._load_parts_inventory_by_location.cache_clear()
-    srv._load_shop_slots_document.cache_clear()
 
 
 def _vehicle() -> str:

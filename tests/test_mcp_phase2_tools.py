@@ -4,30 +4,11 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import mcp_server.server as srv
 
 
 def _sample_vehicle_id() -> str:
     return "64940"
-
-
-@pytest.fixture(autouse=True)
-def clear_data_caches():
-    srv._load_j1939_catalog.cache_clear()
-    srv._load_vehicles.cache_clear()
-    srv._load_maintenance_events.cache_clear()
-    srv._load_risk_rows.cache_clear()
-    srv._load_parts_inventory_by_location.cache_clear()
-    srv._load_shop_slots_document.cache_clear()
-    yield
-    srv._load_j1939_catalog.cache_clear()
-    srv._load_vehicles.cache_clear()
-    srv._load_maintenance_events.cache_clear()
-    srv._load_risk_rows.cache_clear()
-    srv._load_parts_inventory_by_location.cache_clear()
-    srv._load_shop_slots_document.cache_clear()
 
 
 def test_estimate_repair_duration_unknown():
@@ -73,7 +54,6 @@ def test_reserve_service_slot_roundtrip(monkeypatch, tmp_path):
     r = srv.reserve_service_slot(wid, slot_id)
     assert r["ok"] is True
     after = srv.propose_service_appointment("LOC-NORTH", 3.0, "medium")
-    taken = {slot_id}
     ids_after = {c["slot_id"] for c in after["result"]["candidates"]}
     assert slot_id not in ids_after
 

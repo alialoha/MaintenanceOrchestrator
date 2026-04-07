@@ -4,8 +4,6 @@ from __future__ import annotations
 
 import json
 
-import pytest
-
 import mcp_server.server as srv
 
 
@@ -22,23 +20,6 @@ def _assert_tool_envelope(d: dict, expect_ok: bool = True) -> None:
         assert "confidence" in d
         assert "assumptions" in d
         assert "requires_approval" in d
-
-
-@pytest.fixture(autouse=True)
-def clear_data_caches():
-    srv._load_j1939_catalog.cache_clear()
-    srv._load_vehicles.cache_clear()
-    srv._load_maintenance_events.cache_clear()
-    srv._load_risk_rows.cache_clear()
-    srv._load_parts_inventory_by_location.cache_clear()
-    srv._load_shop_slots_document.cache_clear()
-    yield
-    srv._load_j1939_catalog.cache_clear()
-    srv._load_vehicles.cache_clear()
-    srv._load_maintenance_events.cache_clear()
-    srv._load_risk_rows.cache_clear()
-    srv._load_parts_inventory_by_location.cache_clear()
-    srv._load_shop_slots_document.cache_clear()
 
 
 def test_phase1_fetch_vehicle_faults():

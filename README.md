@@ -25,14 +25,6 @@ flowchart LR
 - **Middle** — MCP **client** (streamable HTTP to the server) plus **app policy**: `permissions.json` and `audit.log` live on the client; Operator / Flask are the UIs that embed this stack.
 - **LLM** — **Tool-calling** over an **LLM API** (not MCP transport); the concrete model is a deployment choice. The model proposes tools; **policy runs in the client** before calls reach the MCP server.
 
-## Screenshots
-
-Representative UI captures for reviewers (replace with your own if you prefer pixel-perfect fidelity to a local run).
-
-| Operator (Gradio) — `python -m mcp_operator.gradio_app` | User UI (Flask) — `python -m web.app` |
-| --- | --- |
-| ![Operator console](docs/operator.png) | ![Flask user UI](docs/flask.png) |
-
 ## Layout
 
 All Python packages live under **`src/`** only. (Do not add `mcp_client`, `mcp_server`, or `operator` at the repo root — those were stray empty folders and have been removed.)
@@ -50,8 +42,8 @@ All Python packages live under **`src/`** only. (Do not add `mcp_client`, `mcp_s
 secure-agentic-mcp/
 ├── README.md
 ├── docs/
-│   ├── operator.png
-│   └── flask.png
+│   ├── ideas.md
+│   └── mcp-api-spec.md
 ├── requirements.txt
 ├── docker-compose.yml
 ├── Dockerfile.server

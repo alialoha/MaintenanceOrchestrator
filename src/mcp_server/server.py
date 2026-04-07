@@ -1196,9 +1196,6 @@ async def _http_root(_request: Request) -> HTMLResponse:
 def main() -> None:
     host = os.environ.get("MCP_HTTP_HOST", "0.0.0.0")
     port = int(os.environ.get("MCP_HTTP_PORT", "8000"))
-    display_host = "127.0.0.1" if host in ("0.0.0.0", "::", "[::]") else host
-    data_abs = _DATA.resolve()
-    workspace_abs = WORKSPACE.resolve()
     sep = "=" * 64
     print(sep)
     print("server is running. you can now run the client")
