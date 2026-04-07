@@ -244,23 +244,23 @@ function scrollToBottom() {
     });
 }
 
-async function loadDashboard() {
-    try {
-        const [overview, vehicles, mapPoints, approvals, audit] = await Promise.all([
-            fetch('/api/fleet_overview').then(r => r.json()),
-            fetch('/api/vehicles').then(r => r.json()),
-            fetch('/api/map_points').then(r => r.json()),
-            fetch('/api/approvals').then(r => r.json()),
-            fetch('/api/audit').then(r => r.json()),
-        ]);
-        renderOverview(overview);
-        renderVehicles(vehicles.rows || []);
-        renderApprovals(approvals.rows || []);
-        renderAudit(audit.rows || []);
-        renderMap(mapPoints.rows || []);
-    } catch (e) {
-        console.error('dashboard load failed', e);
-    }
+function loadDashboard() {
+    /** Each section updates as soon as its response is ready (no global Promise.all gate). */
+    const loadSection = (path, label, onOk) => {
+        fetch(path)
+            .then((r) => {
+                if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+                return r.json();
+            })
+            .then(onOk)
+            .catch((e) => console.error(`dashboard ${label} failed`, e));
+    };
+
+    loadSection('/api/fleet_overview', 'overview', (o) => renderOverview(o));
+    loadSection('/api/vehicles', 'vehicles', (d) => renderVehicles(d.rows || []));
+    loadSection('/api/map_points', 'map', (d) => renderMap(d.rows || []));
+    loadSection('/api/approvals', 'approvals', (d) => renderApprovals(d.rows || []));
+    loadSection('/api/audit', 'audit', (d) => renderAudit(d.rows || []));
 }
 
 function renderOverview(o) {
