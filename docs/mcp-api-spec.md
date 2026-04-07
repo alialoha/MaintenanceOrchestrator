@@ -432,3 +432,4 @@ Each prompt should include:
 - Communication tools: `generate_operator_summary`, `generate_customer_update`
 - Prompt packs expanded with required tool sequence, approval checkpoints, and output format
 - Materialized synthetic overlays from normalized data via `scripts/materialize_phase3_data.py`
+- Calibrated deterministic logistics model via `data/model_calibration.json` (used by `estimate_delay_impact`)

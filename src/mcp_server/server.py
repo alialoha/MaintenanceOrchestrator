@@ -35,6 +35,7 @@ APPROVALS_FILE = OPERATIONS_DIR / "approvals.jsonl"
 DECISIONS_FILE = OPERATIONS_DIR / "decisions.jsonl"
 SLOT_RESERVATIONS_FILE = OPERATIONS_DIR / "slot_reservations.jsonl"
 SYNTHETIC_DIR = _DATA / "synthetic"
+CALIBRATION_FILE = _DATA / "model_calibration.json"
 
 mcp = FastMCP("Secure MCP — workspace + governance")
 
@@ -195,6 +196,16 @@ def _load_shop_slots_document() -> dict[str, Any]:
     if not path.exists():
         return {"locations": {}, "slots": []}
     return json.loads(path.read_text(encoding="utf-8"))
+
+
+@lru_cache(maxsize=1)
+def _load_model_calibration() -> dict[str, Any]:
+    if not CALIBRATION_FILE.exists():
+        return {}
+    try:
+        return json.loads(CALIBRATION_FILE.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {}
 
 
 @lru_cache(maxsize=1)
@@ -884,19 +895,31 @@ def estimate_delay_impact(vehicle_id: str, scenario: str) -> dict[str, Any]:
     dresp = list_deliveries_at_risk(vid, horizon_hours=72)
     n_at_risk = int((dresp.get("result") or {}).get("count", 0) or 0) if dresp.get("ok") else 0
 
-    # Scenario multipliers: "repair_now" reduces long-term disruption but adds immediate downtime.
-    if scen == "repair_now":
-        est_delay = 4.0 + mean_eta_var * 0.8 + mean_dev * 0.25 + p_need * 10.0
-        sla = 0.18 + mean_delay_p * 0.55 + p_need * 0.2 + n_at_risk * 0.03
-        cost = mean_ship_cost * (0.15 + sla * 0.35) + est_delay * 55.0
-    elif scen == "defer_24h":
-        est_delay = 24.0 + mean_eta_var * 1.2 + mean_dev * 0.35 + p_need * 8.0
-        sla = 0.28 + mean_delay_p * 0.65 + p_need * 0.25 + n_at_risk * 0.05
-        cost = mean_ship_cost * (0.2 + sla * 0.45) + est_delay * 70.0
-    else:  # swap_vehicle
-        est_delay = max(0.0, 2.0 + mean_eta_var * 0.5 + mean_dev * 0.15 + p_need * 6.0)
-        sla = 0.14 + mean_delay_p * 0.5 + p_need * 0.15 + n_at_risk * 0.02
-        cost = mean_ship_cost * (0.25 + sla * 0.25) + 300.0 + est_delay * 35.0
+    # Calibrated deterministic model coefficients are loaded from data/model_calibration.json.
+    cal = _load_model_calibration()
+    coeff = (
+        (((cal.get("delay_impact") or {}).get("default") or {}).get(scen))
+        if isinstance(cal, dict)
+        else None
+    ) or {}
+    base = _to_float(coeff.get("base"), 0.0)
+    eta_w = _to_float(coeff.get("eta_weight"), 0.0)
+    dev_w = _to_float(coeff.get("deviation_weight"), 0.0)
+    need_w = _to_float(coeff.get("maintenance_need_weight"), 0.0)
+    sla_base = _to_float(coeff.get("sla_base"), 0.0)
+    sla_delay_w = _to_float(coeff.get("sla_delay_prob_weight"), 0.0)
+    sla_need_w = _to_float(coeff.get("sla_maintenance_need_weight"), 0.0)
+    sla_risk_w = _to_float(coeff.get("sla_at_risk_weight"), 0.0)
+    cost_ship_base_w = _to_float(coeff.get("cost_ship_base_weight"), 0.0)
+    cost_sla_w = _to_float(coeff.get("cost_sla_weight"), 0.0)
+    cost_delay_w = _to_float(coeff.get("cost_delay_hour_weight"), 0.0)
+    cost_fixed = _to_float(coeff.get("cost_fixed"), 0.0)
+
+    est_delay = base + mean_eta_var * eta_w + mean_dev * dev_w + p_need * need_w
+    if scen == "swap_vehicle":
+        est_delay = max(0.0, est_delay)
+    sla = sla_base + mean_delay_p * sla_delay_w + p_need * sla_need_w + n_at_risk * sla_risk_w
+    cost = mean_ship_cost * (cost_ship_base_w + sla * cost_sla_w) + cost_fixed + est_delay * cost_delay_w
 
     est_delay = max(0.0, float(est_delay))
     sla = max(0.0, min(1.0, float(sla)))
@@ -916,13 +939,14 @@ def estimate_delay_impact(vehicle_id: str, scenario: str) -> dict[str, Any]:
                 "mean_eta_variation_hours": round(float(mean_eta_var), 3),
                 "mean_shipping_costs": round(float(mean_ship_cost), 2),
                 "mean_delivery_time_deviation": round(float(mean_dev), 3),
+                "calibration_profile": f"default:{scen}",
             },
         },
         confidence=0.72,
         assumptions=[
             "Uses normalized columns from `risk_observations.csv` (delay_probability, eta_variation_hours, shipping_costs, lead_time_days, delivery_time_deviation).",
             "Risk observations have no vehicle_id; per-vehicle observation slices are deterministically assigned for demo repeatability.",
-            "Scenario model is deterministic demo math (not a calibrated SLA/cost estimator).",
+            "Scenario model is deterministic with tunable coefficients loaded from `data/model_calibration.json`.",
         ],
     )
 

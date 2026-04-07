@@ -74,6 +74,7 @@ def test_estimate_delay_impact():
     assert "estimated_delay_hours" in r
     assert "sla_breach_probability" in r
     assert "estimated_cost_impact" in r
+    assert r["inputs"]["calibration_profile"] == "default:repair_now"
 
 
 def test_estimate_delay_impact_bad_scenario():

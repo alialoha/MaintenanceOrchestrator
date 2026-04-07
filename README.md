@@ -5,6 +5,7 @@
 **Author:** [Ali Mousavi](https://github.com/alialoha) · **Repository:** [github.com/alialoha/secure-agentic-mcp](https://github.com/alialoha/secure-agentic-mcp)
 
 Planning notes for the maintenance-orchestrator direction live in `docs/ideas.md`.
+Operator checklist and incident process: `docs/operator-runbook.md`.
 
 ## Architecture (at a glance)
 
@@ -181,3 +182,11 @@ pytest -v
 | Flask | `GET /`, `POST /generate` demo mode, validation error |
 
 For manual end-to-end checks, run the three processes from [Quick start (local)](#quick-start-local) and exercise Operator + Live mode in the browser.
+
+### Browser E2E (optional local, enabled in CI)
+
+```bash
+python -m playwright install chromium
+set RUN_BROWSER_TESTS=1
+pytest -q tests/test_web_browser_e2e.py
+```

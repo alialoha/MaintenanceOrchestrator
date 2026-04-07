@@ -26,6 +26,11 @@ This folder contains public and synthetic-ready data inputs for the Maintenance 
 - Regenerate overlays from normalized data with:
   - `python scripts/materialize_phase3_data.py`
 
+### Calibration profile
+
+- `model_calibration.json` contains deterministic coefficient profiles used by logistics impact modeling (`estimate_delay_impact`).
+- Tune these values to calibrate delay/SLA/cost sensitivity without editing code.
+
 ### Reference mappings
 
 - `reference/j1939_top_faults.json`

@@ -1,0 +1,48 @@
+{
+  "delay_impact": {
+    "default": {
+      "repair_now": {
+        "base": 4.0,
+        "eta_weight": 0.8,
+        "deviation_weight": 0.25,
+        "maintenance_need_weight": 10.0,
+        "sla_base": 0.18,
+        "sla_delay_prob_weight": 0.55,
+        "sla_maintenance_need_weight": 0.2,
+        "sla_at_risk_weight": 0.03,
+        "cost_ship_base_weight": 0.15,
+        "cost_sla_weight": 0.35,
+        "cost_delay_hour_weight": 55.0,
+        "cost_fixed": 0.0
+      },
+      "defer_24h": {
+        "base": 24.0,
+        "eta_weight": 1.2,
+        "deviation_weight": 0.35,
+        "maintenance_need_weight": 8.0,
+        "sla_base": 0.28,
+        "sla_delay_prob_weight": 0.65,
+        "sla_maintenance_need_weight": 0.25,
+        "sla_at_risk_weight": 0.05,
+        "cost_ship_base_weight": 0.2,
+        "cost_sla_weight": 0.45,
+        "cost_delay_hour_weight": 70.0,
+        "cost_fixed": 0.0
+      },
+      "swap_vehicle": {
+        "base": 2.0,
+        "eta_weight": 0.5,
+        "deviation_weight": 0.15,
+        "maintenance_need_weight": 6.0,
+        "sla_base": 0.14,
+        "sla_delay_prob_weight": 0.5,
+        "sla_maintenance_need_weight": 0.15,
+        "sla_at_risk_weight": 0.02,
+        "cost_ship_base_weight": 0.25,
+        "cost_sla_weight": 0.25,
+        "cost_delay_hour_weight": 35.0,
+        "cost_fixed": 300.0
+      }
+    }
+  }
+}
