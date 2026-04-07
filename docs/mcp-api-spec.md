@@ -272,6 +272,11 @@ Input:
 }
 ```
 
+Notes:
+- Uses normalized `data/normalized/risk_observations.csv` columns (`delay_probability`, `eta_variation_hours`, `shipping_costs`, `lead_time_days`, `delivery_time_deviation`) to derive a delivery-like view.
+- Because the logistics dataset has no `vehicle_id`, the implementation deterministically assigns observation slices to a `vehicle_id` for repeatable demos.
+- The time horizon is computed relative to the latest observation timestamp (dataset time), not wall-clock time.
+
 ### Tool: `estimate_delay_impact` (risk: medium)
 
 Input:

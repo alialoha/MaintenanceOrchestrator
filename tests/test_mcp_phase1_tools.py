@@ -32,7 +32,6 @@ def clear_data_caches():
     srv._load_risk_rows.cache_clear()
     srv._load_parts_inventory_by_location.cache_clear()
     srv._load_shop_slots_document.cache_clear()
-    srv._load_deliveries.cache_clear()
     yield
     srv._load_j1939_catalog.cache_clear()
     srv._load_vehicles.cache_clear()
@@ -40,7 +39,6 @@ def clear_data_caches():
     srv._load_risk_rows.cache_clear()
     srv._load_parts_inventory_by_location.cache_clear()
     srv._load_shop_slots_document.cache_clear()
-    srv._load_deliveries.cache_clear()
 
 
 def test_phase1_fetch_vehicle_faults():

@@ -198,12 +198,39 @@ def _load_shop_slots_document() -> dict[str, Any]:
 
 
 @lru_cache(maxsize=1)
-def _load_deliveries() -> list[dict[str, Any]]:
-    path = SYNTHETIC_DIR / "deliveries.json"
-    if not path.exists():
+def _risk_rows_for_vehicle(vehicle_id: str) -> list[dict[str, Any]]:
+    """
+    Derive a stable, per-vehicle slice of logistics observations.
+
+    Note: `risk_observations.csv` does not contain a vehicle_id. For demo purposes we
+    deterministically assign observations to vehicles based on `vehicle_id`.
+    """
+    rows = _load_risk_rows()
+    if not rows:
         return []
-    data = json.loads(path.read_text(encoding="utf-8"))
-    return data if isinstance(data, list) else []
+    vid = (vehicle_id or "").strip()
+    try:
+        offset = int(vid) % 50
+    except ValueError:
+        offset = sum(ord(c) for c in vid) % 50
+    # Keep ordering stable so "recent" has meaning.
+    parsed: list[tuple[datetime, dict[str, Any]]] = []
+    for r in rows:
+        dt = _parse_date(r.get("timestamp"))
+        if dt:
+            parsed.append((dt, r))
+    parsed.sort(key=lambda x: x[0])
+    # Take every 50th row starting at offset (~2% of total).
+    return [parsed[i][1] for i in range(offset, len(parsed), 50)]
+
+
+def _dataset_now_from_rows(rows: list[dict[str, Any]]) -> datetime:
+    dts: list[datetime] = []
+    for r in rows:
+        dt = _parse_date(r.get("timestamp"))
+        if dt:
+            dts.append(dt)
+    return max(dts) if dts else datetime.utcnow()
 
 
 def _reserved_slot_ids() -> set[str]:
@@ -773,31 +800,58 @@ def reserve_service_slot(work_order_id: str, slot_id: str) -> dict[str, Any]:
 
 @mcp.tool()
 def list_deliveries_at_risk(vehicle_id: str, horizon_hours: int = 48) -> dict[str, Any]:
-    """List synthetic deliveries for a vehicle with due times inside the horizon. (Risk: LOW)"""
+    """List derived deliveries for a vehicle from normalized risk observations. (Risk: LOW)"""
     h = max(1, min(168, int(horizon_hours)))
-    now = datetime.utcnow()
-    end = now + timedelta(hours=h)
     vid = (vehicle_id or "").strip()
-    active_status = {"scheduled", "in_transit", "at_risk", "loading", "pending"}
+
+    rows = _risk_rows_for_vehicle(vid)
+    if not rows:
+        return _response(
+            {"vehicle_id": vid, "horizon_hours": h, "deliveries": [], "count": 0},
+            confidence=0.35,
+            assumptions=["No risk observations available to derive deliveries."],
+        )
+    now = _dataset_now_from_rows(rows)
+    end = now + timedelta(hours=h)
     out: list[dict[str, Any]] = []
-    for d in _load_deliveries():
-        if (d.get("vehicle_id") or "").strip() != vid:
+    for r in rows[-1500:]:
+        ts = _parse_date(r.get("timestamp"))
+        if not ts:
             continue
-        st = (d.get("status") or "").strip().lower()
-        if st in ("delivered", "completed", "cancelled"):
+        lead_days = max(0.0, _to_float(r.get("lead_time_days"), 0.0))
+        due = ts + timedelta(days=lead_days)
+        if due > end:
             continue
-        due = _parse_iso_utc_naive(d.get("due_iso"))
-        if not due:
+        delay_p = _to_float(r.get("delay_probability"), 0.0)
+        if delay_p < 0.35:
             continue
-        if due <= end:
-            row = {**d}
-            row["at_risk_reason"] = "overdue" if due < now else "due_within_horizon"
-            out.append(row)
+        delivery_id = (r.get("observation_id") or "").strip() or f"RS-{int(ts.timestamp())}"
+        out.append(
+            {
+                "delivery_id": delivery_id,
+                "vehicle_id": vid,
+                "due_iso": due.replace(microsecond=0).isoformat() + "Z",
+                "status": "at_risk" if due >= now else "overdue",
+                "delay_probability": round(max(0.0, min(1.0, delay_p)), 4),
+                "eta_variation_hours": round(_to_float(r.get("eta_variation_hours"), 0.0), 3),
+                "shipping_costs": round(_to_float(r.get("shipping_costs"), 0.0), 2),
+                "delivery_time_deviation": round(_to_float(r.get("delivery_time_deviation"), 0.0), 3),
+                "route_risk_level": round(_to_float(r.get("route_risk_level"), 0.0), 3),
+                "source_observation_id": delivery_id,
+                "source_dataset": r.get("source_dataset", ""),
+            }
+        )
+        if len(out) >= 60:
+            break
     out.sort(key=lambda r: _parse_iso_utc_naive(r.get("due_iso")) or datetime.max)
     return _response(
         {"vehicle_id": vid, "horizon_hours": h, "deliveries": out, "count": len(out)},
-        confidence=0.75,
-        assumptions=["Deliveries are demo JSON; not live TMS."],
+        confidence=0.78 if out else 0.45,
+        assumptions=[
+            "Deliveries are derived from normalized `risk_observations.csv` (no live TMS feed).",
+            "Because risk observations have no vehicle_id, observations are deterministically assigned per vehicle_id for demo purposes.",
+            "Horizon is computed relative to the latest timestamp in the assigned observation slice (dataset time), not wall-clock now.",
+        ],
         next_actions=["estimate_delay_impact"],
     )
 
@@ -817,33 +871,59 @@ def estimate_delay_impact(vehicle_id: str, scenario: str) -> dict[str, Any]:
             p_need = float(pred["result"].get("maintenance_need_probability", 0.25))
         except (TypeError, ValueError):
             p_need = 0.25
-    dresp = list_deliveries_at_risk(vid, horizon_hours=72)
-    n_at_risk = 0
-    if dresp.get("ok") and isinstance(dresp.get("result"), dict):
-        n_at_risk = int(dresp["result"].get("count", 0) or 0)
-    if scen == "repair_now":
-        base_delay = 6.0 + p_need * 18.0
-        sla = min(0.92, 0.25 + p_need * 0.45 + n_at_risk * 0.08)
-        cost = 400.0 + p_need * 2200.0 + n_at_risk * 350.0
-    elif scen == "defer_24h":
-        base_delay = 24.0 + p_need * 14.0
-        sla = min(0.95, 0.35 + p_need * 0.5 + n_at_risk * 0.12)
-        cost = 250.0 + p_need * 3200.0 + n_at_risk * 520.0
+    # Logistics features from normalized columns (risk observations).
+    risk_rows = _risk_rows_for_vehicle(vid)[-400:]
+    if risk_rows:
+        mean_delay_p = sum(_to_float(r.get("delay_probability"), 0.0) for r in risk_rows) / len(risk_rows)
+        mean_eta_var = sum(_to_float(r.get("eta_variation_hours"), 0.0) for r in risk_rows) / len(risk_rows)
+        mean_ship_cost = sum(_to_float(r.get("shipping_costs"), 0.0) for r in risk_rows) / len(risk_rows)
+        mean_dev = sum(_to_float(r.get("delivery_time_deviation"), 0.0) for r in risk_rows) / len(risk_rows)
     else:
-        base_delay = max(0.0, 3.0 + p_need * 8.0)
-        sla = min(0.88, 0.2 + p_need * 0.35 + n_at_risk * 0.06)
-        cost = 900.0 + p_need * 1400.0 + n_at_risk * 200.0
+        mean_delay_p, mean_eta_var, mean_ship_cost, mean_dev = 0.35, 1.5, 500.0, 2.0
+
+    dresp = list_deliveries_at_risk(vid, horizon_hours=72)
+    n_at_risk = int((dresp.get("result") or {}).get("count", 0) or 0) if dresp.get("ok") else 0
+
+    # Scenario multipliers: "repair_now" reduces long-term disruption but adds immediate downtime.
+    if scen == "repair_now":
+        est_delay = 4.0 + mean_eta_var * 0.8 + mean_dev * 0.25 + p_need * 10.0
+        sla = 0.18 + mean_delay_p * 0.55 + p_need * 0.2 + n_at_risk * 0.03
+        cost = mean_ship_cost * (0.15 + sla * 0.35) + est_delay * 55.0
+    elif scen == "defer_24h":
+        est_delay = 24.0 + mean_eta_var * 1.2 + mean_dev * 0.35 + p_need * 8.0
+        sla = 0.28 + mean_delay_p * 0.65 + p_need * 0.25 + n_at_risk * 0.05
+        cost = mean_ship_cost * (0.2 + sla * 0.45) + est_delay * 70.0
+    else:  # swap_vehicle
+        est_delay = max(0.0, 2.0 + mean_eta_var * 0.5 + mean_dev * 0.15 + p_need * 6.0)
+        sla = 0.14 + mean_delay_p * 0.5 + p_need * 0.15 + n_at_risk * 0.02
+        cost = mean_ship_cost * (0.25 + sla * 0.25) + 300.0 + est_delay * 35.0
+
+    est_delay = max(0.0, float(est_delay))
+    sla = max(0.0, min(1.0, float(sla)))
+    cost = max(0.0, float(cost))
     return _response(
         {
             "vehicle_id": vid,
             "scenario": scen,
-            "estimated_delay_hours": round(base_delay, 2),
+            "estimated_delay_hours": round(est_delay, 2),
             "sla_breach_probability": round(sla, 4),
             "estimated_cost_impact": round(cost, 2),
-            "inputs": {"maintenance_need_probability": round(p_need, 4), "deliveries_at_risk_72h": n_at_risk},
+            "inputs": {
+                "maintenance_need_probability": round(p_need, 4),
+                "deliveries_at_risk_72h": n_at_risk,
+                "risk_observations_window": len(risk_rows) if risk_rows else 0,
+                "mean_delay_probability": round(float(mean_delay_p), 4),
+                "mean_eta_variation_hours": round(float(mean_eta_var), 3),
+                "mean_shipping_costs": round(float(mean_ship_cost), 2),
+                "mean_delivery_time_deviation": round(float(mean_dev), 3),
+            },
         },
-        confidence=0.68,
-        assumptions=["Scenario model is deterministic demo math tied to predict_maintenance_need + delivery counts."],
+        confidence=0.72,
+        assumptions=[
+            "Uses normalized columns from `risk_observations.csv` (delay_probability, eta_variation_hours, shipping_costs, lead_time_days, delivery_time_deviation).",
+            "Risk observations have no vehicle_id; per-vehicle observation slices are deterministically assigned for demo repeatability.",
+            "Scenario model is deterministic demo math (not a calibrated SLA/cost estimator).",
+        ],
     )
 
 
@@ -910,7 +990,18 @@ def resource_shop_capacity_snapshot() -> str:
 
 @mcp.resource("file://data/synthetic/deliveries")
 def resource_deliveries_demo() -> str:
-    return json.dumps(_load_deliveries(), indent=2)
+    # Kept for backward compatibility with the original spec URI. Now derived from normalized
+    # risk observations so the content uses real normalized columns.
+    example_vehicle_id = "64940"
+    derived = list_deliveries_at_risk(example_vehicle_id, horizon_hours=168)["result"]
+    return json.dumps(
+        {
+            "example_vehicle_id": example_vehicle_id,
+            "deliveries": derived.get("deliveries", []),
+            "note": "Derived from data/normalized/risk_observations.csv (no live TMS feed).",
+        },
+        indent=2,
+    )
 
 
 @mcp.prompt()

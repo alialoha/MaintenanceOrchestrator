@@ -21,7 +21,6 @@ def clear_data_caches():
     srv._load_risk_rows.cache_clear()
     srv._load_parts_inventory_by_location.cache_clear()
     srv._load_shop_slots_document.cache_clear()
-    srv._load_deliveries.cache_clear()
     yield
     srv._load_j1939_catalog.cache_clear()
     srv._load_vehicles.cache_clear()
@@ -29,7 +28,6 @@ def clear_data_caches():
     srv._load_risk_rows.cache_clear()
     srv._load_parts_inventory_by_location.cache_clear()
     srv._load_shop_slots_document.cache_clear()
-    srv._load_deliveries.cache_clear()
 
 
 def test_estimate_repair_duration_unknown():
@@ -85,7 +83,7 @@ def test_list_deliveries_at_risk():
     assert out["ok"] is True
     assert out["result"]["count"] >= 1
     ids = {d["delivery_id"] for d in out["result"]["deliveries"]}
-    assert "DEL-1001" in ids or "DEL-1002" in ids
+    assert any(i.startswith("RS-") for i in ids)
 
 
 def test_estimate_delay_impact():
@@ -109,4 +107,5 @@ def test_phase2_resources():
     shop = json.loads(srv.resource_shop_capacity_snapshot())
     assert "slots" in shop
     d = json.loads(srv.resource_deliveries_demo())
-    assert isinstance(d, list)
+    assert isinstance(d, dict)
+    assert "deliveries" in d
