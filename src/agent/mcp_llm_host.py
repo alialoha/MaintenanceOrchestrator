@@ -90,6 +90,21 @@ class MCPLLMHost(MCPPermissionHTTPClient):
             ),
         }
 
+    @staticmethod
+    def _is_tool_use_failed_error(exc: BaseException) -> bool:
+        text = str(exc).lower()
+        return "tool_use_failed" in text or "failed to call a function" in text
+
+    def _tool_failure_fallback_system_message(self) -> dict[str, str]:
+        return {
+            "role": "system",
+            "content": (
+                "Tool calling failed at the provider layer. Continue without tools for this turn. "
+                "Do not emit function calls. Provide a short, actionable answer and ask for any missing IDs "
+                "(vehicle_id/work_order_id/delivery_id) needed for the next tool-backed step."
+            ),
+        }
+
     async def get_available_tools(self):
         await self.connect()
         mcp_tools = await self.list_tools()
@@ -277,12 +292,22 @@ class MCPLLMHost(MCPPermissionHTTPClient):
 
         messages = [self._system_message(), *self.conversation_history]
         if tools:
-            response = self.llm_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=tools,
-                tool_choice="auto",
-            )
+            try:
+                response = self.llm_client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto",
+                )
+            except Exception as e:
+                if not self._is_tool_use_failed_error(e):
+                    raise
+                # Some OpenAI-compatible providers intermittently reject function-call formatting.
+                # Fall back to a no-tool answer instead of dropping to demo mode.
+                fallback_messages = [self._system_message(), self._tool_failure_fallback_system_message(), *self.conversation_history]
+                response = self.llm_client.chat.completions.create(
+                    model=self.model, messages=fallback_messages
+                )
         else:
             response = self.llm_client.chat.completions.create(
                 model=self.model, messages=messages

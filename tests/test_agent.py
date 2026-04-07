@@ -12,3 +12,9 @@ def test_risk_levels_covers_tools():
         "execute_command",
     ):
         assert name in r
+
+
+def test_detect_tool_use_failed_error():
+    assert MCPLLMHost._is_tool_use_failed_error(Exception("tool_use_failed"))
+    assert MCPLLMHost._is_tool_use_failed_error(Exception("Failed to call a function"))
+    assert not MCPLLMHost._is_tool_use_failed_error(Exception("401 unauthorized"))
