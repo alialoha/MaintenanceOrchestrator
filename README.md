@@ -65,6 +65,17 @@ As an end user, you interact through chat, but the assistant can invoke governed
 - `Triage vehicle 64940 and tell me whether we should create a work order.`
 - `Estimate delay impact for vehicle 64940 under repair_now vs defer_24h vs swap_vehicle.`
 
+## Demo UI sections
+
+The Flask UI now includes dashboard sections intended for enterprise demos:
+
+- **Overview**: KPI cards (vehicles in view, high-risk vehicles, open work orders, pending approvals)
+- **Vehicles**: on-road vehicle table with risk and maintenance need
+- **Map**: geospatial fleet markers (Leaflet/OpenStreetMap)
+- **Approvals**: pending approval queue snapshot
+- **Audit**: recent audit lines
+- **Chat**: guided prompt chips + conversational copilot
+
 ## Layout
 
 All Python packages live under **`src/`** only. (Do not add `mcp_client`, `mcp_server`, or `operator` at the repo root — those were stray empty folders and have been removed.)

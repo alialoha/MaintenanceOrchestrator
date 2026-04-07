@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body class="font-ibm-plex">
@@ -29,6 +30,58 @@
         </div>
 
         <div class="chat-container">
+            <div class="dashboard-wrap">
+                <div class="tabs-row">
+                    <button class="tab-btn active" data-tab="overviewTab">Overview</button>
+                    <button class="tab-btn" data-tab="vehiclesTab">Vehicles</button>
+                    <button class="tab-btn" data-tab="mapTab">Map</button>
+                    <button class="tab-btn" data-tab="approvalsTab">Approvals</button>
+                    <button class="tab-btn" data-tab="auditTab">Audit</button>
+                    <button class="tab-btn" data-tab="chatTab">Chat</button>
+                </div>
+
+                <div class="panel active" id="overviewTab">
+                    <div class="kpi-grid">
+                        <div class="kpi-card"><div class="kpi-label">Vehicles in View</div><div id="kpiVehicles" class="kpi-value">-</div></div>
+                        <div class="kpi-card"><div class="kpi-label">High-Risk Vehicles</div><div id="kpiHighRisk" class="kpi-value">-</div></div>
+                        <div class="kpi-card"><div class="kpi-label">Open Work Orders</div><div id="kpiWorkOrders" class="kpi-value">-</div></div>
+                        <div class="kpi-card"><div class="kpi-label">Pending Approvals</div><div id="kpiApprovals" class="kpi-value">-</div></div>
+                    </div>
+                    <div class="tutorial-block">
+                        <h3>Guided demo prompts</h3>
+                        <div class="chips">
+                            <button class="chip" data-prompt="Triage vehicle 64940 and tell me if we should create a work order.">Triage vehicle 64940</button>
+                            <button class="chip" data-prompt="Estimate delay impact for vehicle 64940 under repair_now, defer_24h, and swap_vehicle.">Compare scenarios</button>
+                            <button class="chip" data-prompt="Generate an operator summary for the latest work order and list required approvals.">Operator summary</button>
+                            <button class="chip" data-prompt="Generate a customer update for the first at-risk delivery in professional and empathetic tone.">Customer update</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="panel" id="vehiclesTab">
+                    <table class="data-table" id="vehiclesTable">
+                        <thead><tr><th>Vehicle</th><th>Need Prob</th><th>Severity</th><th>At Risk (72h)</th><th>Last Event</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="panel" id="mapTab">
+                    <div id="fleetMap" class="map-box"></div>
+                </div>
+
+                <div class="panel" id="approvalsTab">
+                    <table class="data-table" id="approvalsTable">
+                        <thead><tr><th>Approval</th><th>Action</th><th>Status</th><th>Cost</th><th>Created</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div class="panel" id="auditTab">
+                    <div id="auditLines" class="audit-box"></div>
+                </div>
+            </div>
+
+            <div class="panel" id="chatTab">
             <div id="messagesArea" class="messages-area" role="log" aria-live="polite" aria-relevant="additions">
                 <div class="messages-content">
                     <div id="welcomeScreen" class="welcome-screen">
@@ -74,6 +127,7 @@
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
 
             <div class="input-area">
@@ -127,6 +181,7 @@
     <script>
         window.__LIVE_AVAILABLE__ = {{ 'true' if live_available else 'false' }};
     </script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/static/script.js"></script>
 </body>
 </html>

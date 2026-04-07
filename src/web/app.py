@@ -15,6 +15,7 @@ from agent.llm_client import (
     resolved_llm_model,
 )
 from agent.mcp_llm_host import MCPLLMHost
+import mcp_server.server as mcp_srv
 from web.branding import get_branding
 from web.demo import demo_reply
 
@@ -60,6 +61,68 @@ def _live_allowed() -> bool:
 def _run_chat(message: str) -> str:
     host = MCPLLMHost()
     return asyncio.run(host.chat(message))
+
+
+def _fleet_vehicle_ids(limit: int = 30) -> list[str]:
+    vids = list(mcp_srv._load_vehicles().keys())
+    return vids[: max(1, min(limit, len(vids)))]
+
+
+def _fleet_rows(limit: int = 30) -> list[dict]:
+    rows: list[dict] = []
+    for vid in _fleet_vehicle_ids(limit):
+        pred = mcp_srv.predict_maintenance_need(vid)
+        pred_r = pred.get("result") if pred.get("ok") else {}
+        prob = float((pred_r or {}).get("maintenance_need_probability", 0.0) or 0.0)
+        sev = "high" if prob >= 0.75 else "medium" if prob >= 0.45 else "low"
+        risk = mcp_srv.list_deliveries_at_risk(vid, horizon_hours=72)
+        risk_count = int(((risk.get("result") or {}).get("count", 0)) if risk.get("ok") else 0)
+        maint = mcp_srv.get_maintenance_history(vid, limit=1)
+        last_event = ""
+        if maint.get("ok"):
+            events = (maint.get("result") or {}).get("events", [])
+            if events:
+                last_event = events[0].get("event_date", "")
+        rows.append(
+            {
+                "vehicle_id": vid,
+                "maintenance_need_probability": round(prob, 4),
+                "severity_label": sev,
+                "deliveries_at_risk_72h": risk_count,
+                "last_event_date": last_event,
+            }
+        )
+    rows.sort(key=lambda r: (r["maintenance_need_probability"], r["deliveries_at_risk_72h"]), reverse=True)
+    return rows
+
+
+def _fleet_map_points(limit: int = 50) -> list[dict]:
+    points: list[dict] = []
+    vids = _fleet_vehicle_ids(limit)
+    for idx, vid in enumerate(vids):
+        slice_rows = mcp_srv._risk_rows_for_vehicle(vid)
+        if not slice_rows:
+            continue
+        row = slice_rows[-1]
+        lat = float(row.get("vehicle_gps_latitude", 0.0) or 0.0)
+        lon = float(row.get("vehicle_gps_longitude", 0.0) or 0.0)
+        if not lat or not lon:
+            continue
+        pred = mcp_srv.predict_maintenance_need(vid)
+        prob = float(((pred.get("result") or {}).get("maintenance_need_probability", 0.0)) if pred.get("ok") else 0.0)
+        severity = "high" if prob >= 0.75 else "medium" if prob >= 0.45 else "low"
+        points.append(
+            {
+                "vehicle_id": vid,
+                "lat": lat,
+                "lon": lon,
+                "severity": severity,
+                "maintenance_need_probability": round(prob, 4),
+                "label": f"{vid} | {severity}",
+                "order": idx,
+            }
+        )
+    return points
 
 
 @app.route("/")
@@ -126,6 +189,48 @@ def generate():
             )
 
     return jsonify({"error": "Invalid mode; use demo or live"}), 400
+
+
+@app.route("/api/fleet_overview")
+def fleet_overview():
+    rows = _fleet_rows(limit=30)
+    pending = len([r for r in mcp_srv._read_jsonl(mcp_srv.APPROVALS_FILE) if (r.get("status") or "") == "pending"])
+    open_work_orders = len(mcp_srv._read_jsonl(mcp_srv.WORK_ORDERS_FILE))
+    high_risk = len([r for r in rows if r["severity_label"] == "high"])
+    return jsonify(
+        {
+            "vehicles_in_view": len(rows),
+            "high_risk_vehicles": high_risk,
+            "open_work_orders": open_work_orders,
+            "pending_approvals": pending,
+        }
+    )
+
+
+@app.route("/api/vehicles")
+def vehicles():
+    return jsonify({"rows": _fleet_rows(limit=50)})
+
+
+@app.route("/api/map_points")
+def map_points():
+    return jsonify({"rows": _fleet_map_points(limit=50)})
+
+
+@app.route("/api/approvals")
+def approvals():
+    rows = mcp_srv._read_jsonl(mcp_srv.APPROVALS_FILE)[-100:]
+    rows.reverse()
+    return jsonify({"rows": rows[:50]})
+
+
+@app.route("/api/audit")
+def audit():
+    line_rows: list[dict] = []
+    if mcp_srv.AUDIT_LOG.exists():
+        for line in mcp_srv.AUDIT_LOG.read_text(encoding="utf-8", errors="ignore").splitlines()[-200:]:
+            line_rows.append({"line": line})
+    return jsonify({"rows": line_rows[-100:]})
 
 
 if __name__ == "__main__":

@@ -12,11 +12,17 @@ const modelSelect = document.getElementById('modelSelect');
 const sendButton = document.getElementById('sendButton');
 const sendIcon = document.getElementById('sendIcon');
 const loadingSpinner = document.getElementById('loadingSpinner');
+const tabs = document.querySelectorAll('.tab-btn');
+const panels = document.querySelectorAll('.panel');
+const chips = document.querySelectorAll('.chip');
+let fleetMap = null;
+let fleetMarkers = [];
 
 document.addEventListener('DOMContentLoaded', function () {
     modelSelect.value = 'demo';
     setupEventListeners();
     updateSendButton();
+    loadDashboard();
 });
 
 function setupEventListeners() {
@@ -24,6 +30,22 @@ function setupEventListeners() {
     clearBtn.addEventListener('click', clearChat);
     messageInput.addEventListener('input', handleInputChange);
     messageInput.addEventListener('keydown', handleKeyDown);
+    tabs.forEach(btn => btn.addEventListener('click', () => selectTab(btn.dataset.tab)));
+    chips.forEach(btn => btn.addEventListener('click', () => {
+        messageInput.value = btn.dataset.prompt || '';
+        messageInput.focus();
+        updateSendButton();
+    }));
+}
+
+function selectTab(tabId) {
+    tabs.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+    panels.forEach(p => p.classList.toggle('active', p.id === tabId));
+    if (tabId === 'mapTab') {
+        setTimeout(() => {
+            if (fleetMap) fleetMap.invalidateSize();
+        }, 20);
+    }
 }
 
 function handleSubmit(e) {
@@ -213,4 +235,89 @@ function scrollToBottom() {
         top: messagesArea.scrollHeight,
         behavior: 'smooth'
     });
+}
+
+async function loadDashboard() {
+    try {
+        const [overview, vehicles, mapPoints, approvals, audit] = await Promise.all([
+            fetch('/api/fleet_overview').then(r => r.json()),
+            fetch('/api/vehicles').then(r => r.json()),
+            fetch('/api/map_points').then(r => r.json()),
+            fetch('/api/approvals').then(r => r.json()),
+            fetch('/api/audit').then(r => r.json()),
+        ]);
+        renderOverview(overview);
+        renderVehicles(vehicles.rows || []);
+        renderApprovals(approvals.rows || []);
+        renderAudit(audit.rows || []);
+        renderMap(mapPoints.rows || []);
+    } catch (e) {
+        console.error('dashboard load failed', e);
+    }
+}
+
+function renderOverview(o) {
+    document.getElementById('kpiVehicles').textContent = o.vehicles_in_view ?? '-';
+    document.getElementById('kpiHighRisk').textContent = o.high_risk_vehicles ?? '-';
+    document.getElementById('kpiWorkOrders').textContent = o.open_work_orders ?? '-';
+    document.getElementById('kpiApprovals').textContent = o.pending_approvals ?? '-';
+}
+
+function renderVehicles(rows) {
+    const tbody = document.querySelector('#vehiclesTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td>${escapeHtml(r.vehicle_id)}</td>
+            <td>${Number(r.maintenance_need_probability || 0).toFixed(3)}</td>
+            <td>${escapeHtml(r.severity_label || '')}</td>
+            <td>${escapeHtml(String(r.deliveries_at_risk_72h ?? 0))}</td>
+            <td>${escapeHtml(r.last_event_date || '')}</td>
+        </tr>
+    `).join('');
+}
+
+function renderApprovals(rows) {
+    const tbody = document.querySelector('#approvalsTable tbody');
+    if (!tbody) return;
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td>${escapeHtml(r.approval_id || '')}</td>
+            <td>${escapeHtml(r.action_type || '')}</td>
+            <td>${escapeHtml(r.status || '')}</td>
+            <td>${escapeHtml(String(r.estimated_cost ?? ''))}</td>
+            <td>${escapeHtml(r.created_at || '')}</td>
+        </tr>
+    `).join('');
+}
+
+function renderAudit(rows) {
+    const box = document.getElementById('auditLines');
+    if (!box) return;
+    box.innerHTML = rows.map(r => `<div>${escapeHtml(r.line || '')}</div>`).join('');
+}
+
+function renderMap(rows) {
+    const mapEl = document.getElementById('fleetMap');
+    if (!mapEl || typeof L === 'undefined') return;
+    if (!fleetMap) {
+        fleetMap = L.map('fleetMap').setView([39.5, -98.35], 4);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
+        }).addTo(fleetMap);
+    }
+    fleetMarkers.forEach(m => fleetMap.removeLayer(m));
+    fleetMarkers = [];
+    rows.forEach(r => {
+        const color = r.severity === 'high' ? '#dc2626' : r.severity === 'medium' ? '#d97706' : '#16a34a';
+        const marker = L.circleMarker([r.lat, r.lon], { radius: 6, color, fillColor: color, fillOpacity: 0.7 })
+            .addTo(fleetMap)
+            .bindPopup(`<strong>Vehicle ${escapeHtml(r.vehicle_id)}</strong><br/>Severity: ${escapeHtml(r.severity)}<br/>Need: ${r.maintenance_need_probability}`);
+        fleetMarkers.push(marker);
+    });
+}
+
+function escapeHtml(v) {
+    return String(v || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
