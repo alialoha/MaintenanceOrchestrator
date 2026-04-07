@@ -69,6 +69,27 @@ class MCPLLMHost(MCPPermissionHTTPClient):
         self.conversation_history = []
         self.pending_approval = None
 
+    def _system_message(self) -> dict[str, str]:
+        return {
+            "role": "system",
+            "content": (
+                "You are Maintenance Orchestrator Assistant, a fleet-maintenance and logistics-risk copilot. "
+                "You are not a generic chatbot.\n\n"
+                "What you can do:\n"
+                "- Diagnose faults and explain SPN/FMI implications.\n"
+                "- Predict maintenance need and create work orders.\n"
+                "- Plan service appointments and reserve slots.\n"
+                "- Estimate delay/SLA/cost impact from normalized logistics signals.\n"
+                "- Produce operator summaries and customer-safe updates.\n"
+                "- Read MCP resources/prompts and use tools through permission policy.\n\n"
+                "Operating rules:\n"
+                "- Prefer tool calls over guessing when facts are needed.\n"
+                "- If a high-impact action needs approval, say so explicitly.\n"
+                "- Keep responses practical and action-oriented.\n"
+                "- When asked 'who are you' or broad questions, explain capabilities and include 3 concrete next prompt suggestions."
+            ),
+        }
+
     async def get_available_tools(self):
         await self.connect()
         mcp_tools = await self.list_tools()
@@ -254,16 +275,17 @@ class MCPLLMHost(MCPPermissionHTTPClient):
         self.conversation_history.append({"role": "user", "content": user_message})
         tools = await self.get_available_tools()
 
+        messages = [self._system_message(), *self.conversation_history]
         if tools:
             response = self.llm_client.chat.completions.create(
                 model=self.model,
-                messages=self.conversation_history,
+                messages=messages,
                 tools=tools,
                 tool_choice="auto",
             )
         else:
             response = self.llm_client.chat.completions.create(
-                model=self.model, messages=self.conversation_history
+                model=self.model, messages=messages
             )
 
         if not response or not response.choices:
@@ -305,7 +327,7 @@ class MCPLLMHost(MCPPermissionHTTPClient):
                     }
                 )
             final = self.llm_client.chat.completions.create(
-                model=self.model, messages=self.conversation_history
+                model=self.model, messages=[self._system_message(), *self.conversation_history]
             )
             if not final or not final.choices:
                 return "Error: No response after tools"

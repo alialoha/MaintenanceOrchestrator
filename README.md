@@ -26,6 +26,45 @@ flowchart LR
 - **Middle** — MCP **client** (streamable HTTP to the server) plus **app policy**: `permissions.json` and `audit.log` live on the client; Operator / Flask are the UIs that embed this stack.
 - **LLM** — **Tool-calling** over an **LLM API** (not MCP transport); the concrete model is a deployment choice. The model proposes tools; **policy runs in the client** before calls reach the MCP server.
 
+## What this assistant can do
+
+As an end user, you interact through chat, but the assistant can invoke governed MCP tools behind the scenes.
+
+- **Diagnostics:** inspect vehicle faults, map SPN/FMI, and explain likely causes.
+- **Planning:** predict maintenance need, create work orders, estimate repair duration.
+- **Shop operations:** check parts inventory, propose service windows, reserve slots.
+- **Logistics impact:** list at-risk deliveries and estimate delay/SLA/cost by scenario.
+- **Comms:** generate operator summaries and customer-facing status updates.
+- **Governance:** request approvals and keep decision/audit trail context.
+
+### How to interact effectively
+
+- Ask with a concrete goal and IDs when possible (vehicle/work order/delivery IDs).
+- If you do not know IDs, ask the assistant to discover them first.
+- Ask for alternatives using scenarios (`repair_now`, `defer_24h`, `swap_vehicle`).
+- Ask for an action plan and then execution (`create_work_order`, `request_approval`, etc.).
+
+### Example use-case flows
+
+1) **Incident triage to action**
+- "Vehicle 64940 has recurring faults. Triage and recommend next steps."
+- "Create a high-priority work order if risk is high."
+- "If approval is required, draft the approval request."
+
+2) **Capacity-aware scheduling**
+- "For work order WO-..., estimate repair duration and propose the best slot."
+- "Reserve the slot and summarize expected operational impact."
+
+3) **Customer communication**
+- "For delivery RS-..., generate a concise customer-safe update."
+- "Give an empathetic variant and a professional variant."
+
+### Prompt ideas you can copy
+
+- `Who are you and what can you do for fleet maintenance operations?`
+- `Triage vehicle 64940 and tell me whether we should create a work order.`
+- `Estimate delay impact for vehicle 64940 under repair_now vs defer_24h vs swap_vehicle.`
+
 ## Layout
 
 All Python packages live under **`src/`** only. (Do not add `mcp_client`, `mcp_server`, or `operator` at the repo root — those were stray empty folders and have been removed.)
