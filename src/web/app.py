@@ -4,6 +4,7 @@ import asyncio
 import os
 import time
 from pathlib import Path
+from threading import Lock
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, render_template, request
@@ -52,6 +53,10 @@ app = Flask(
     template_folder=str(_ROOT / "templates"),
     static_folder=str(_ROOT / "static"),
 )
+
+_DASHBOARD_CACHE_TTL_SECONDS = float(os.environ.get("WEB_DASHBOARD_CACHE_TTL", "20"))
+_dashboard_cache_lock = Lock()
+_dashboard_cache: dict[str, object] = {"expires_at": 0.0, "payload": None}
 
 
 def _live_allowed() -> bool:
@@ -128,6 +133,48 @@ def _fleet_map_points(limit: int = 50) -> list[dict]:
     return points
 
 
+def _build_dashboard_payload() -> dict[str, object]:
+    rows = _fleet_rows(limit=50)
+    map_rows = _fleet_map_points(limit=50)
+    pending = len([r for r in mcp_srv._read_jsonl(mcp_srv.APPROVALS_FILE) if (r.get("status") or "") == "pending"])
+    open_work_orders = len(mcp_srv._read_jsonl(mcp_srv.WORK_ORDERS_FILE))
+    high_risk = len([r for r in rows[:30] if r["severity_label"] == "high"])
+    approvals_rows = mcp_srv._read_jsonl(mcp_srv.APPROVALS_FILE)[-100:]
+    approvals_rows.reverse()
+
+    line_rows: list[dict] = []
+    if mcp_srv.AUDIT_LOG.exists():
+        for line in mcp_srv.AUDIT_LOG.read_text(encoding="utf-8", errors="ignore").splitlines()[-200:]:
+            line_rows.append({"line": line})
+
+    return {
+        "overview": {
+            "vehicles_in_view": len(rows[:30]),
+            "high_risk_vehicles": high_risk,
+            "open_work_orders": open_work_orders,
+            "pending_approvals": pending,
+        },
+        "vehicles": {"rows": rows},
+        "map_points": {"rows": map_rows},
+        "approvals": {"rows": approvals_rows[:50]},
+        "audit": {"rows": line_rows[-100:]},
+    }
+
+
+def _dashboard_payload() -> dict[str, object]:
+    now = time.time()
+    with _dashboard_cache_lock:
+        payload = _dashboard_cache.get("payload")
+        expires_at = float(_dashboard_cache.get("expires_at") or 0.0)
+        if payload is not None and now < expires_at:
+            return payload  # type: ignore[return-value]
+
+        fresh_payload = _build_dashboard_payload()
+        _dashboard_cache["payload"] = fresh_payload
+        _dashboard_cache["expires_at"] = now + max(1.0, _DASHBOARD_CACHE_TTL_SECONDS)
+        return fresh_payload
+
+
 @app.route("/")
 def index():
     b = get_branding()
@@ -198,44 +245,27 @@ def generate():
 
 @app.route("/api/fleet_overview")
 def fleet_overview():
-    rows = _fleet_rows(limit=30)
-    pending = len([r for r in mcp_srv._read_jsonl(mcp_srv.APPROVALS_FILE) if (r.get("status") or "") == "pending"])
-    open_work_orders = len(mcp_srv._read_jsonl(mcp_srv.WORK_ORDERS_FILE))
-    high_risk = len([r for r in rows if r["severity_label"] == "high"])
-    return jsonify(
-        {
-            "vehicles_in_view": len(rows),
-            "high_risk_vehicles": high_risk,
-            "open_work_orders": open_work_orders,
-            "pending_approvals": pending,
-        }
-    )
+    return jsonify(_dashboard_payload()["overview"])
 
 
 @app.route("/api/vehicles")
 def vehicles():
-    return jsonify({"rows": _fleet_rows(limit=50)})
+    return jsonify(_dashboard_payload()["vehicles"])
 
 
 @app.route("/api/map_points")
 def map_points():
-    return jsonify({"rows": _fleet_map_points(limit=50)})
+    return jsonify(_dashboard_payload()["map_points"])
 
 
 @app.route("/api/approvals")
 def approvals():
-    rows = mcp_srv._read_jsonl(mcp_srv.APPROVALS_FILE)[-100:]
-    rows.reverse()
-    return jsonify({"rows": rows[:50]})
+    return jsonify(_dashboard_payload()["approvals"])
 
 
 @app.route("/api/audit")
 def audit():
-    line_rows: list[dict] = []
-    if mcp_srv.AUDIT_LOG.exists():
-        for line in mcp_srv.AUDIT_LOG.read_text(encoding="utf-8", errors="ignore").splitlines()[-200:]:
-            line_rows.append({"line": line})
-    return jsonify({"rows": line_rows[-100:]})
+    return jsonify(_dashboard_payload()["audit"])
 
 
 if __name__ == "__main__":
