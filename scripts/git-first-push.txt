@@ -1,0 +1,29 @@
+First commit and push to GitHub (run from repo root in PowerShell or Git Bash)
+================================================================================
+
+Prerequisites: Git installed, GitHub account. Docker is optional for this step.
+
+1) Review what will be committed (includes Dockerfiles, docker-compose.yml, scripts):
+   git status
+
+2) Initialize and commit (first time only):
+   git init
+   git add -A
+   git commit -m "Initial commit: secure MCP demo (HTTP server, Gradio operator, Flask UI)"
+
+3) Create an empty repo on GitHub (via website: New repository), OR use GitHub CLI:
+   gh repo create secure-agentic-mcp --private --source=. --remote=origin --push
+   (Skip this if you created the repo on the web.)
+
+4) If you created the repo on the web, connect and push:
+   git branch -M main
+   git remote add origin https://github.com/YOUR_USER/YOUR_REPO.git
+   git push -u origin main
+
+5) Optional — verify Docker builds when Docker Desktop is available:
+   docker compose build
+
+Notes
+-----
+- .env is gitignored; only .env.example is committed. Put real keys in .env locally.
+- Cloud deploy can come after the repo exists; you do not need to deploy before the first push.

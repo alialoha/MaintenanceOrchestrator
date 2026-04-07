@@ -1,0 +1,44 @@
+secure-agentic-mcp — run apps one by one (Windows PowerShell)
+============================================================
+
+Prereq (once per machine):
+  cd secure-agentic-mcp
+  python -m venv .venv
+  .\.venv\Scripts\Activate.ps1
+  pip install -r requirements.txt
+  copy .env.example .env
+  (edit .env — set LLM credentials for Operator chat / Flask Live; see .env.example)
+
+Preview env only (no servers):
+  .\scripts\00-print-env.ps1
+
+All three in separate windows at once (Windows):
+  .\scripts\start-all-terminals.ps1
+
+LLM smoke test (uses current LLM_PROVIDER from .env; needs network + valid keys):
+  set PYTHONPATH=src
+  python scripts/llm_smoke_test.py
+
+Terminal A — MCP server (leave running):
+  .\scripts\01-mcp-server.ps1
+
+Terminal B — Operator (Gradio), optional:
+  .\scripts\02-operator.ps1
+  Browser: http://127.0.0.1:7860/
+
+Terminal C — Flask user UI, optional:
+  .\scripts\03-web.ps1
+  Browser: http://127.0.0.1:5000/
+
+Order to learn the stack:
+  1) 01 — tools/resources/prompts all live here
+  2) 02 — inspect MCP + permissions + AI chat
+  3) 03 — end-user Demo vs Live
+
+Equivalent manual commands (what the scripts set up for you):
+  $env:PYTHONPATH = "...\src"
+  $env:MCP_DATA_DIR = "...\data"
+  $env:MCP_SERVER_URL = "http://127.0.0.1:8000"   # clients only
+  python -m mcp_server
+  python -m mcp_operator.gradio_app
+  python -m web.app

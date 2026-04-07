@@ -1,0 +1,15 @@
+.env
+.deployment.md
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+data/audit.log
+data/full/
+data/raw/kaggle/
+data/sources.kaggle.json
+*.egg-info/
+dist/
+build/

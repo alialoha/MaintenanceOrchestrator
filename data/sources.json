@@ -1,0 +1,37 @@
+{
+  "downloaded_at": "2026-04-06",
+  "sources": [
+    {
+      "id": "uci_ai4i_2020",
+      "type": "dataset_csv",
+      "url": "https://archive.ics.uci.edu/ml/machine-learning-databases/00601/ai4i2020.csv",
+      "local_path": "data/raw/ai4i2020.csv",
+      "license": "CC BY 4.0 (per UCI dataset page)",
+      "intended_use": "Predictive maintenance risk and failure mode simulation."
+    },
+    {
+      "id": "kaggle_logistics_and_supply_chain",
+      "type": "dataset_bundle",
+      "url": "https://www.kaggle.com/datasets/datasetengineer/logistics-and-supply-chain-dataset",
+      "local_path": "data/raw/kaggle/logistics_and_supply_chain/",
+      "license": "Kaggle dataset terms",
+      "intended_use": "Shipment flow, route/timing context, and operational risk features."
+    },
+    {
+      "id": "kaggle_vehicle_maintenance_history",
+      "type": "dataset_bundle",
+      "url": "https://www.kaggle.com/datasets/datasetengineer/logistics-vehicle-maintenance-history-dataset",
+      "local_path": "data/raw/kaggle/vehicle_maintenance_history/",
+      "license": "Kaggle dataset terms",
+      "intended_use": "Recurring faults, maintenance history, and work-order simulation."
+    },
+    {
+      "id": "j1939_fault_reference",
+      "type": "reference_article",
+      "url": "https://simmasoftware.com/what-are-j1939-fault-codes/",
+      "local_path": "data/reference/j1939_top_faults.json",
+      "license": "Reference usage for summarized educational mapping",
+      "intended_use": "SPN/FMI lookup for maintenance fault triage tools."
+    }
+  ]
+}

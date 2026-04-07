@@ -1,0 +1,51 @@
+services:
+  mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      MCP_DATA_DIR: /app/data
+      MCP_HTTP_HOST: "0.0.0.0"
+      MCP_HTTP_PORT: "8000"
+
+  operator:
+    build:
+      context: .
+      dockerfile: Dockerfile.operator
+    ports:
+      - "7860:7860"
+    volumes:
+      - ./data:/app/data
+    environment:
+      MCP_DATA_DIR: /app/data
+      MCP_SERVER_URL: http://mcp:8000
+      PERMISSIONS_PATH: /app/data/permissions.json
+      GRADIO_SERVER_NAME: "0.0.0.0"
+      GRADIO_SERVER_PORT: "7860"
+    env_file:
+      - .env
+    depends_on:
+      - mcp
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+    environment:
+      MCP_DATA_DIR: /app/data
+      MCP_SERVER_URL: http://mcp:8000
+      PERMISSIONS_PATH: /app/data/permissions.json
+      FLASK_HOST: "0.0.0.0"
+      FLASK_PORT: "5000"
+    env_file:
+      - .env
+    depends_on:
+      - mcp

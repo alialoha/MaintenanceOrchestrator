@@ -1,0 +1,142 @@
+{
+  "source_note": "Top SPNs and FMI meanings were normalized from public educational references for demo purposes.",
+  "spn_catalog": [
+    {
+      "spn": 102,
+      "name": "Boost Pressure",
+      "system": "Engine Air",
+      "common_actions": [
+        "Inspect boost pressure sensor and connector",
+        "Check charge-air piping for leaks",
+        "Verify turbocharger response under load"
+      ]
+    },
+    {
+      "spn": 91,
+      "name": "Accelerator Pedal Position",
+      "system": "Driver Input",
+      "common_actions": [
+        "Inspect pedal position sensor wiring",
+        "Run sensor sweep calibration",
+        "Check ECU input plausibility"
+      ]
+    },
+    {
+      "spn": 84,
+      "name": "Wheel Speed Sensor",
+      "system": "Braking/ABS",
+      "common_actions": [
+        "Inspect wheel speed harness routing",
+        "Clean/inspect tone ring",
+        "Confirm sensor air gap"
+      ]
+    },
+    {
+      "spn": 3216,
+      "name": "Aftertreatment Fuel Injector",
+      "system": "Aftertreatment",
+      "common_actions": [
+        "Check injector electrical integrity",
+        "Verify dosing command response",
+        "Inspect DEF/aftertreatment path for restrictions"
+      ]
+    },
+    {
+      "spn": 4334,
+      "name": "Diesel Particulate Filter",
+      "system": "Aftertreatment",
+      "common_actions": [
+        "Review regeneration history",
+        "Inspect DPF pressure differential",
+        "Schedule service regeneration if needed"
+      ]
+    },
+    {
+      "spn": 132,
+      "name": "Air Inlet Temperature",
+      "system": "Engine Intake",
+      "common_actions": [
+        "Inspect intake air temp sensor",
+        "Check connector corrosion",
+        "Validate reading versus ambient"
+      ]
+    },
+    {
+      "spn": 111,
+      "name": "Coolant Level",
+      "system": "Cooling",
+      "common_actions": [
+        "Check coolant level and leaks",
+        "Inspect reservoir sensor",
+        "Pressure-test cooling system"
+      ]
+    },
+    {
+      "spn": 97,
+      "name": "Engine Oil Pressure",
+      "system": "Lubrication",
+      "common_actions": [
+        "Verify mechanical oil pressure",
+        "Inspect oil pressure sender",
+        "Check oil quality and level"
+      ]
+    },
+    {
+      "spn": 641,
+      "name": "Turbo Speed",
+      "system": "Turbocharger",
+      "common_actions": [
+        "Inspect turbo speed sensor",
+        "Check turbo shaft play",
+        "Validate boost control behavior"
+      ]
+    },
+    {
+      "spn": 110,
+      "name": "Engine Coolant Temperature",
+      "system": "Cooling",
+      "common_actions": [
+        "Check thermostat and fan operation",
+        "Inspect coolant temperature sensor",
+        "Verify coolant flow and radiator condition"
+      ]
+    }
+  ],
+  "fmi_catalog": [
+    {
+      "fmi": 0,
+      "meaning": "Data valid but above normal range",
+      "default_severity": "medium"
+    },
+    {
+      "fmi": 1,
+      "meaning": "Data valid but below normal range",
+      "default_severity": "medium"
+    },
+    {
+      "fmi": 2,
+      "meaning": "Data erratic/intermittent/incorrect",
+      "default_severity": "medium"
+    },
+    {
+      "fmi": 3,
+      "meaning": "Voltage above normal",
+      "default_severity": "high"
+    },
+    {
+      "fmi": 4,
+      "meaning": "Voltage below normal",
+      "default_severity": "high"
+    },
+    {
+      "fmi": 5,
+      "meaning": "Current below normal or open circuit",
+      "default_severity": "high"
+    },
+    {
+      "fmi": 7,
+      "meaning": "Mechanical system not responding",
+      "default_severity": "high"
+    }
+  ]
+}

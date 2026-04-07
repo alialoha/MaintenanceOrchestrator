@@ -1,0 +1,8 @@
+{
+  "read_file": "allow",
+  "write_file": "ask",
+  "list_files": "allow",
+  "delete_file": "deny",
+  "execute_command": "deny",
+  "analyze_code": "ask"
+}

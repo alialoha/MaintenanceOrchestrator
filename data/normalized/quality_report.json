@@ -1,0 +1,27 @@
+{
+  "generated_at": "2026-04-07T03:03:13Z",
+  "input_dir": "data/normalized",
+  "output_dir": "data/normalized_v2",
+  "vehicles": {
+    "input_rows": 92284,
+    "output_rows": 92147,
+    "dropped_bad_or_nonpositive_vehicle_id": 137
+  },
+  "maintenance_events": {
+    "input_rows": 250000,
+    "output_rows": 249819,
+    "dropped_bad_or_nonpositive_vehicle_id": 181,
+    "dropped_unknown_vehicle_id": 0
+  },
+  "risk_observations": {
+    "input_rows": 32065,
+    "output_rows": 32065,
+    "normalized_risk_labels": [
+      "low",
+      "moderate",
+      "high",
+      "unknown"
+    ],
+    "unknown_risk_label_rows": 0
+  }
+}
