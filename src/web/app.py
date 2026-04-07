@@ -108,6 +108,9 @@ def _fleet_map_points(limit: int = 50) -> list[dict]:
         lon = float(row.get("vehicle_gps_longitude", 0.0) or 0.0)
         if not lat or not lon:
             continue
+        # Demo filter for US fleet view (prevents ocean/outlier points from synthetic/global data).
+        if not (24.0 <= lat <= 49.5 and -125.0 <= lon <= -66.0):
+            continue
         pred = mcp_srv.predict_maintenance_need(vid)
         prob = float(((pred.get("result") or {}).get("maintenance_need_probability", 0.0)) if pred.get("ok") else 0.0)
         severity = "high" if prob >= 0.75 else "medium" if prob >= 0.45 else "low"
@@ -133,6 +136,8 @@ def index():
         live_available=_live_allowed(),
         author_name=b["author_name"],
         repo_url=b["repo_url"],
+        company_name=b["company_name"],
+        logo_path=b["logo_path"],
     )
 
 

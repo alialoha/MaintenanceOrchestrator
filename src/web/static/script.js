@@ -12,6 +12,7 @@ const modelSelect = document.getElementById('modelSelect');
 const sendButton = document.getElementById('sendButton');
 const sendIcon = document.getElementById('sendIcon');
 const loadingSpinner = document.getElementById('loadingSpinner');
+const inputArea = document.querySelector('.input-area');
 const tabs = document.querySelectorAll('.tab-btn');
 const panels = document.querySelectorAll('.panel');
 const chips = document.querySelectorAll('.chip');
@@ -21,6 +22,7 @@ let fleetMarkers = [];
 document.addEventListener('DOMContentLoaded', function () {
     modelSelect.value = 'demo';
     setupEventListeners();
+    selectTab('overviewTab');
     updateSendButton();
     loadDashboard();
 });
@@ -32,6 +34,7 @@ function setupEventListeners() {
     messageInput.addEventListener('keydown', handleKeyDown);
     tabs.forEach(btn => btn.addEventListener('click', () => selectTab(btn.dataset.tab)));
     chips.forEach(btn => btn.addEventListener('click', () => {
+        selectTab('chatTab');
         messageInput.value = btn.dataset.prompt || '';
         messageInput.focus();
         updateSendButton();
@@ -45,6 +48,9 @@ function selectTab(tabId) {
         setTimeout(() => {
             if (fleetMap) fleetMap.invalidateSize();
         }, 20);
+    }
+    if (inputArea) {
+        inputArea.style.display = tabId === 'chatTab' ? '' : 'none';
     }
 }
 
@@ -80,6 +86,7 @@ function updateSendButton() {
 }
 
 async function sendMessage(content, model) {
+    selectTab('chatTab');
     const userMessage = {
         id: Date.now().toString(),
         content: content,

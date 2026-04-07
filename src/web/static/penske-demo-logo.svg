@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="44" viewBox="0 0 220 44" role="img" aria-label="Penske demo logo">
+  <rect x="0" y="0" width="220" height="44" rx="8" fill="#111827"/>
+  <rect x="8" y="8" width="28" height="28" rx="4" fill="#ffffff"/>
+  <path d="M14 30V14h11c4 0 6 2 6 5s-2 5-6 5h-5v6z" fill="#111827"/>
+  <text x="44" y="20" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-size="14" font-weight="700">PENSKE</text>
+  <text x="44" y="34" fill="#9CA3AF" font-family="Arial, Helvetica, sans-serif" font-size="10" font-weight="600">Maintenance Demo</text>
+</svg>

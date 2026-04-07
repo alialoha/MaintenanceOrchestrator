@@ -58,6 +58,13 @@ body {
     gap: 2px;
 }
 
+.header-logo {
+    width: 180px;
+    max-width: 60vw;
+    height: auto;
+    margin-bottom: 6px;
+}
+
 .header-title {
     color: #111827;
     font-size: 18px;
